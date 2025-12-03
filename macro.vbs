@@ -45,50 +45,50 @@ outPath = fso.GetAbsolutePathName("作成済エクセル\" & outFileName)
 '=========================
 ' テンプレートをコピー
 '=========================
-Dim sheetNameCover, sheetNameTable
-sheetNameCover = "表紙"
-sheetNameTable = "テーブル"
+' シートをインデックスで取得（日本語文字列を避ける）
+Const SHEET_INDEX_COVER = 1  ' 表紙シート
+Const SHEET_INDEX_TABLE = 2  ' テーブルシート
 
 Set wbDst = excel.Workbooks.Open(templatePath)
 wbDst.SaveAs outPath
 
-Set dstSheetCover = wbDst.Sheets(sheetNameCover)
-Set dstSheetTable = wbDst.Sheets(sheetNameTable)
+Set dstSheetCover = wbDst.Sheets(SHEET_INDEX_COVER)
+Set dstSheetTable = wbDst.Sheets(SHEET_INDEX_TABLE)
 
 '=========================
 ' マッピング（EntityMetadata → セル）
 '=========================
 Set mapping = CreateObject("Scripting.Dictionary")
 
-' --- 表紙 ---
-mapping.Add "DisplayName|表紙", "W21"
+' --- 表紙シート（インデックス1） ---
+mapping.Add "DisplayName|1", "W21"
 
-' --- テーブル ---
-mapping.Add "DisplayName|テーブル", "E5"
-mapping.Add "DisplayCollectionName|テーブル", "E6"
-mapping.Add "SchemaName|テーブル", "E7"
-mapping.Add "Description|テーブル", "E8"
-mapping.Add "TableType|テーブル", "E9"
-mapping.Add "OwnershipType|テーブル", "E10"
-mapping.Add "PrimaryImageAttribute|テーブル", "E11"
-mapping.Add "EntityColor|テーブル", "E12"
+' --- テーブルシート（インデックス2） ---
+mapping.Add "DisplayName|2", "E5"
+mapping.Add "DisplayCollectionName|2", "E6"
+mapping.Add "SchemaName|2", "E7"
+mapping.Add "Description|2", "E8"
+mapping.Add "TableType|2", "E9"
+mapping.Add "OwnershipType|2", "E10"
+mapping.Add "PrimaryImageAttribute|2", "E11"
+mapping.Add "EntityColor|2", "E12"
 
-mapping.Add "IsDuplicateDetectionEnabled|テーブル", "E20"
-mapping.Add "ChangeTrackingEnabled|テーブル", "E21"
-mapping.Add "IsKnowledgeManagementEnabled|テーブル", "E22"
-mapping.Add "EntityHelpUrlEnabled|テーブル", "E23"
-mapping.Add "EntityHelpUrl|テーブル", "E24"
-mapping.Add "IsAuditEnabled|テーブル", "E25"
-mapping.Add "IsQuickCreateEnabled|テーブル", "E26"
-mapping.Add "HasActivities|テーブル", "E27"
-mapping.Add "IsMailMergeEnabled|テーブル", "E28"
-mapping.Add "IsSLAEnabled|テーブル", "E29"
-mapping.Add "IsDocumentManagementEnabled|テーブル", "E31"
-mapping.Add "IsConnectionsEnabled|テーブル", "E32"
-mapping.Add "AutoCreateAccessTeams|テーブル", "E34"
-mapping.Add "HasFeedback|テーブル", "E35"
-mapping.Add "IsAvailableOffline|テーブル", "E37"
-mapping.Add "IsValidForQueue|テーブル", "E38"
+mapping.Add "IsDuplicateDetectionEnabled|2", "E20"
+mapping.Add "ChangeTrackingEnabled|2", "E21"
+mapping.Add "IsKnowledgeManagementEnabled|2", "E22"
+mapping.Add "EntityHelpUrlEnabled|2", "E23"
+mapping.Add "EntityHelpUrl|2", "E24"
+mapping.Add "IsAuditEnabled|2", "E25"
+mapping.Add "IsQuickCreateEnabled|2", "E26"
+mapping.Add "HasActivities|2", "E27"
+mapping.Add "IsMailMergeEnabled|2", "E28"
+mapping.Add "IsSLAEnabled|2", "E29"
+mapping.Add "IsDocumentManagementEnabled|2", "E31"
+mapping.Add "IsConnectionsEnabled|2", "E32"
+mapping.Add "AutoCreateAccessTeams|2", "E34"
+mapping.Add "HasFeedback|2", "E35"
+mapping.Add "IsAvailableOffline|2", "E37"
+mapping.Add "IsValidForQueue|2", "E38"
 
 '=========================
 ' 変換関数（True/False → 記号, TableType → 日本語）
@@ -125,13 +125,13 @@ End Function
 '=========================
 ' 転記処理（赤字判定あり）
 '=========================
-Dim key, parts, metaName, sheetName, cellAddr, dstSheet
+Dim key, parts, metaName, sheetIndex, cellAddr, dstSheet
 
 For Each key In mapping.Keys
 
     parts = Split(key, "|")
     metaName = parts(0)
-    sheetName = parts(1)
+    sheetIndex = CInt(parts(1))  ' 数値インデックスに変換
     cellAddr = mapping(key)
 
     ' 元データ取得
@@ -144,10 +144,14 @@ For Each key In mapping.Keys
     ' 値変換を適用
     value = ConvertValue(metaName, value)
 
-    ' 出力先シート
-    If sheetName = sheetNameCover Then
+    ' 出力先シート（インデックスで判定）
+    If sheetIndex = SHEET_INDEX_COVER Then
         Set dstSheet = dstSheetCover
+    ElseIf sheetIndex = SHEET_INDEX_TABLE Then
+        Set dstSheet = dstSheetTable
     Else
+        ' エラー処理（必要に応じて）
+        WScript.Echo "警告: 不明なシートインデックス " & sheetIndex
         Set dstSheet = dstSheetTable
     End If
 
@@ -168,4 +172,4 @@ wbDst.Close False
 wbSrc.Close False
 excel.Quit
 
-WScript.Echo "完了 → " & outPath
+WScript.Echo "Complete -> " & outPath
