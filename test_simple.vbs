@@ -190,7 +190,16 @@ Public Sub SetEntityInfoToTemplate(wbOut As Workbook, wbEntity As Workbook)
     Dim rowOut As Long: rowOut = 2
     
     Set wsEntity = wbEntity.Sheets(1)
-    Set wsOut = wbOut.Sheets("Entity")   'テンプレートのシート名
+    
+    '▼ "Entity" シートの存在確認
+    On Error Resume Next
+    Set wsOut = wbOut.Sheets("Entity")
+    On Error GoTo 0
+    
+    If wsOut Is Nothing Then
+        Err.Raise 105, , "テンプレートに 'Entity' シートが存在しません。"
+    End If
+    
     Set dic = GetEntityMappingDict()
     
     lastCol = wsEntity.Cells(1, wsEntity.Columns.Count).End(xlToLeft).Column
