@@ -59,8 +59,16 @@ Public Sub メイン処理_Entityのみ()
         '=====================================
         Call SetEntityInfoToNewWorkbook(wbOut, wbEntity)
         
-        '▼ 出力先ファイル名
-        outputPath = folderOutput & entityFile
+        '▼ 出力先ファイル名を生成（エンティティ定義書_ID_XXX_v0.0.xlsx）
+        Dim fileNameWithoutExt As String
+        Dim dotPos As Long
+        dotPos = InStrRev(entityFile, ".")
+        If dotPos > 0 Then
+            fileNameWithoutExt = Left(entityFile, dotPos - 1)
+        Else
+            fileNameWithoutExt = entityFile
+        End If
+        outputPath = folderOutput & "エンティティ定義書_ID_" & fileNameWithoutExt & "_v0.0.xlsx"
         
         '▼ テンプレートをコピー（非活性）
         'wbTemplate.SaveCopyAs outputPath
