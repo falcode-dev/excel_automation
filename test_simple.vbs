@@ -80,6 +80,9 @@ Public Sub メイン処理_Entityのみ()
         '=====================================
         Call SetEntityInfoToTemplate(wbOut, wbEntity)
         
+        '▼ entity ファイルを閉じる
+        wbEntity.Close SaveChanges:=False
+        
         '▼ attribute ファイルを開く（存在する場合）
         attributePath = folderAttribute & entityFile
         If Dir(attributePath) <> "" Then
@@ -96,7 +99,6 @@ Public Sub メイン処理_Entityのみ()
         '▼ 保存して閉じる
         wbOut.Close SaveChanges:=True
         wbTemplate.Close SaveChanges:=False
-        wbEntity.Close SaveChanges:=False
         
         entityFile = Dir()
     Loop
