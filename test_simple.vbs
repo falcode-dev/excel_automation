@@ -1,5 +1,8 @@
 Option Explicit
 
+'▼ キャンセルフラグ（モジュールレベル）
+Private gbCancel As Boolean
+
 '────────────────────────────────────────
 '  メイン処理（シンプル版：テンプレート不使用）
 '────────────────────────────────────────
@@ -58,22 +61,53 @@ Public Sub メイン処理_Entityのみ()
     Application.EnableEvents = False
     Application.DisplayAlerts = False
     
+    '▼ キャンセルフラグを初期化
+    gbCancel = False
+    
+    '▼ ESCキーでキャンセルできるように設定
+    Application.OnKey "{ESC}", "CancelProcess"
+    
     '▼ テンプレートを1回だけ開く（リンク更新を無効化）
     Set wbTemplate = Workbooks.Open(templatePath, ReadOnly:=True, UpdateLinks:=0)
     
     '▼ entity フォルダの全Excelを処理
+    '▼ まずファイル数をカウント
+    Dim fileCount As Long
+    Dim currentFileNum As Long
+    fileCount = 0
     entityFile = Dir(folderEntity & "*.xlsx")
-    If entityFile = "" Then
+    Do While entityFile <> ""
+        fileCount = fileCount + 1
+        entityFile = Dir()
+    Loop
+    
+    If fileCount = 0 Then
         '▼ テンプレートを閉じる
         wbTemplate.Close SaveChanges:=False
+        '▼ ESCキーの設定を解除
+        Application.OnKey "{ESC}"
         '▼ パフォーマンス設定を復元
         Application.Calculation = calcMode
         Application.ScreenUpdating = screenUpdating
         Application.EnableEvents = enableEvents
+        Application.DisplayAlerts = displayAlerts
+        Application.StatusBar = False
         Err.Raise 104, , "10_entity に処理対象ファイルがありません。"
     End If
     
+    '▼ ファイルリストを再取得
+    entityFile = Dir(folderEntity & "*.xlsx")
+    currentFileNum = 0
+    
     Do While entityFile <> ""
+        '▼ キャンセルチェック
+        If gbCancel Then
+            GoTo CANCEL_PROCESS
+        End If
+        
+        currentFileNum = currentFileNum + 1
+        Application.StatusBar = "処理中: " & currentFileNum & "/" & fileCount & " - " & entityFile & " を読み込み中... (ESCキーでキャンセル)"
+        DoEvents  ' UIの応答性を保つ
     
         entityPath = folderEntity & entityFile
         
@@ -95,10 +129,27 @@ Public Sub メイン処理_Entityのみ()
         End If
         outputPath = folderOutput & "エンティティ定義書_ID_" & displayName & "_v0.0.xlsx"
         
+        '▼ キャンセルチェック
+        If gbCancel Then
+            wbEntity.Close SaveChanges:=False
+            GoTo CANCEL_PROCESS
+        End If
+        
+        Application.StatusBar = "処理中: " & currentFileNum & "/" & fileCount & " - " & entityFile & " をコピー中... (ESCキーでキャンセル)"
+        DoEvents
         '▼ テンプレートをコピー
         wbTemplate.SaveCopyAs outputPath
         Set wbOut = Workbooks.Open(outputPath, UpdateLinks:=0)
         
+        '▼ キャンセルチェック
+        If gbCancel Then
+            wbOut.Close SaveChanges:=False
+            wbEntity.Close SaveChanges:=False
+            GoTo CANCEL_PROCESS
+        End If
+        
+        Application.StatusBar = "処理中: " & currentFileNum & "/" & fileCount & " - " & entityFile & " のEntity情報を設定中... (ESCキーでキャンセル)"
+        DoEvents
         '=====================================
         '  ★ entity の情報をテンプレートに出力
         '=====================================
@@ -107,10 +158,25 @@ Public Sub メイン処理_Entityのみ()
         '▼ entity ファイルを閉じる
         wbEntity.Close SaveChanges:=False
         
+        '▼ キャンセルチェック
+        If gbCancel Then
+            wbOut.Close SaveChanges:=False
+            GoTo CANCEL_PROCESS
+        End If
+        
         '▼ attribute ファイルを開く（存在する場合）
         attributePath = folderAttribute & entityFile
         If Dir(attributePath) <> "" Then
+            Application.StatusBar = "処理中: " & currentFileNum & "/" & fileCount & " - " & entityFile & " のAttribute情報を設定中... (ESCキーでキャンセル)"
+            DoEvents
             Set wbAttribute = Workbooks.Open(attributePath, ReadOnly:=True, UpdateLinks:=0)
+            
+            '▼ キャンセルチェック
+            If gbCancel Then
+                wbAttribute.Close SaveChanges:=False
+                wbOut.Close SaveChanges:=False
+                GoTo CANCEL_PROCESS
+            End If
             
             '=====================================
             '  ★ attribute の情報をテンプレートに出力
@@ -120,6 +186,14 @@ Public Sub メイン処理_Entityのみ()
             wbAttribute.Close SaveChanges:=False
         End If
         
+        '▼ キャンセルチェック
+        If gbCancel Then
+            wbOut.Close SaveChanges:=False
+            GoTo CANCEL_PROCESS
+        End If
+        
+        Application.StatusBar = "処理中: " & currentFileNum & "/" & fileCount & " - " & entityFile & " を保存中... (ESCキーでキャンセル)"
+        DoEvents
         '▼ 保存して閉じる
         wbOut.Close SaveChanges:=True
         
@@ -129,13 +203,43 @@ Public Sub メイン処理_Entityのみ()
     '▼ テンプレートを閉じる
     wbTemplate.Close SaveChanges:=False
     
+    '▼ ESCキーの設定を解除
+    Application.OnKey "{ESC}"
+    
     '▼ パフォーマンス設定を復元
     Application.Calculation = calcMode
     Application.ScreenUpdating = screenUpdating
     Application.EnableEvents = enableEvents
     Application.DisplayAlerts = displayAlerts
     
-    MsgBox "entity データの出力が完了しました。", vbInformation
+    '▼ ステータスバーをクリア
+    Application.StatusBar = False
+    
+    MsgBox "entity データの出力が完了しました。(" & fileCount & "ファイル)", vbInformation
+    Exit Sub
+
+'────────────────────────────────────────
+CANCEL_PROCESS:
+'────────────────────────────────────────
+    '▼ 開いているファイルを閉じる
+    On Error Resume Next
+    If Not wbOut Is Nothing Then wbOut.Close SaveChanges:=False
+    If Not wbTemplate Is Nothing Then wbTemplate.Close SaveChanges:=False
+    If Not wbEntity Is Nothing Then wbEntity.Close SaveChanges:=False
+    If Not wbAttribute Is Nothing Then wbAttribute.Close SaveChanges:=False
+    On Error GoTo 0
+    
+    '▼ ESCキーの設定を解除
+    Application.OnKey "{ESC}"
+    
+    '▼ パフォーマンス設定を復元
+    Application.Calculation = calcMode
+    Application.ScreenUpdating = screenUpdating
+    Application.EnableEvents = enableEvents
+    Application.DisplayAlerts = displayAlerts
+    Application.StatusBar = False
+    
+    MsgBox "処理がキャンセルされました。(" & currentFileNum - 1 & "/" & fileCount & " ファイル処理済み)", vbInformation
     Exit Sub
 
 '────────────────────────────────────────
@@ -157,11 +261,15 @@ ERR_HANDLER:
     If Not wbEntity Is Nothing Then wbEntity.Close SaveChanges:=False
     If Not wbAttribute Is Nothing Then wbAttribute.Close SaveChanges:=False
     
+    '▼ ESCキーの設定を解除
+    Application.OnKey "{ESC}"
+    
     '▼ パフォーマンス設定を復元
     Application.Calculation = xlCalculationAutomatic
     Application.ScreenUpdating = True
     Application.EnableEvents = True
     Application.DisplayAlerts = True
+    Application.StatusBar = False
     On Error GoTo 0
     
     '▼ 保存したエラー情報を表示
@@ -177,6 +285,14 @@ ERR_HANDLER:
     
     Exit Sub
 
+End Sub
+
+
+'========================================================================
+'  ESCキーでキャンセル
+'========================================================================
+Public Sub CancelProcess()
+    gbCancel = True
 End Sub
 
 
