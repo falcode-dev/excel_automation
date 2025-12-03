@@ -42,16 +42,43 @@ Public Sub メイン処理_Entityのみ()
     templatePath = folderTemplate & "template.xlsx"
     If Dir(templatePath) = "" Then Err.Raise 103, , "template.xlsx が見つかりません。"
     
+    '▼ パフォーマンス最適化
+    Dim calcMode As Long
+    Dim screenUpdating As Boolean
+    Dim enableEvents As Boolean
+    Dim displayAlerts As Boolean
+    
+    calcMode = Application.Calculation
+    screenUpdating = Application.ScreenUpdating
+    enableEvents = Application.EnableEvents
+    displayAlerts = Application.DisplayAlerts
+    
+    Application.Calculation = xlCalculationManual
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    Application.DisplayAlerts = False
+    
+    '▼ テンプレートを1回だけ開く（リンク更新を無効化）
+    Set wbTemplate = Workbooks.Open(templatePath, ReadOnly:=True, UpdateLinks:=0)
+    
     '▼ entity フォルダの全Excelを処理
     entityFile = Dir(folderEntity & "*.xlsx")
-    If entityFile = "" Then Err.Raise 104, , "10_entity に処理対象ファイルがありません。"
+    If entityFile = "" Then
+        '▼ テンプレートを閉じる
+        wbTemplate.Close SaveChanges:=False
+        '▼ パフォーマンス設定を復元
+        Application.Calculation = calcMode
+        Application.ScreenUpdating = screenUpdating
+        Application.EnableEvents = enableEvents
+        Err.Raise 104, , "10_entity に処理対象ファイルがありません。"
+    End If
     
     Do While entityFile <> ""
     
         entityPath = folderEntity & entityFile
         
-        '▼ entity を開く
-        Set wbEntity = Workbooks.Open(entityPath, ReadOnly:=True)
+        '▼ entity を開く（リンク更新を無効化）
+        Set wbEntity = Workbooks.Open(entityPath, ReadOnly:=True, UpdateLinks:=0)
         
         '▼ 表示名を取得してファイル名を生成（エンティティ定義書_ID_XXX_v0.0.xlsx）
         Dim displayName As String
@@ -68,12 +95,9 @@ Public Sub メイン処理_Entityのみ()
         End If
         outputPath = folderOutput & "エンティティ定義書_ID_" & displayName & "_v0.0.xlsx"
         
-        '▼ テンプレートを開く
-        Set wbTemplate = Workbooks.Open(templatePath, ReadOnly:=True)
-        
         '▼ テンプレートをコピー
         wbTemplate.SaveCopyAs outputPath
-        Set wbOut = Workbooks.Open(outputPath)
+        Set wbOut = Workbooks.Open(outputPath, UpdateLinks:=0)
         
         '=====================================
         '  ★ entity の情報をテンプレートに出力
@@ -86,7 +110,7 @@ Public Sub メイン処理_Entityのみ()
         '▼ attribute ファイルを開く（存在する場合）
         attributePath = folderAttribute & entityFile
         If Dir(attributePath) <> "" Then
-            Set wbAttribute = Workbooks.Open(attributePath, ReadOnly:=True)
+            Set wbAttribute = Workbooks.Open(attributePath, ReadOnly:=True, UpdateLinks:=0)
             
             '=====================================
             '  ★ attribute の情報をテンプレートに出力
@@ -98,10 +122,18 @@ Public Sub メイン処理_Entityのみ()
         
         '▼ 保存して閉じる
         wbOut.Close SaveChanges:=True
-        wbTemplate.Close SaveChanges:=False
         
         entityFile = Dir()
     Loop
+    
+    '▼ テンプレートを閉じる
+    wbTemplate.Close SaveChanges:=False
+    
+    '▼ パフォーマンス設定を復元
+    Application.Calculation = calcMode
+    Application.ScreenUpdating = screenUpdating
+    Application.EnableEvents = enableEvents
+    Application.DisplayAlerts = displayAlerts
     
     MsgBox "entity データの出力が完了しました。", vbInformation
     Exit Sub
@@ -124,6 +156,12 @@ ERR_HANDLER:
     If Not wbTemplate Is Nothing Then wbTemplate.Close SaveChanges:=False
     If Not wbEntity Is Nothing Then wbEntity.Close SaveChanges:=False
     If Not wbAttribute Is Nothing Then wbAttribute.Close SaveChanges:=False
+    
+    '▼ パフォーマンス設定を復元
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+    Application.DisplayAlerts = True
     On Error GoTo 0
     
     '▼ 保存したエラー情報を表示
@@ -136,6 +174,8 @@ ERR_HANDLER:
     End If
     
     MsgBox errMsg, vbCritical, "エラー"
+    
+    Exit Sub
 
 End Sub
 
