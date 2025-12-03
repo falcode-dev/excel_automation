@@ -85,7 +85,12 @@ ERR_HANDLER:
     If Not wbTemplate Is Nothing Then wbTemplate.Close SaveChanges:=False
     If Not wbEntity Is Nothing Then wbEntity.Close SaveChanges:=False
     
-    MsgBox "エラー：" & Err.Description, vbCritical
+    Dim errMsg As String
+    errMsg = "エラーが発生しました。" & vbCrLf & vbCrLf
+    errMsg = errMsg & "エラー番号：" & Err.Number & vbCrLf
+    errMsg = errMsg & "エラー内容：" & Err.Description
+    
+    MsgBox errMsg, vbCritical, "エラー"
 
 End Sub
 
@@ -192,12 +197,33 @@ Public Sub SetEntityInfoToTemplate(wbOut As Workbook, wbEntity As Workbook)
     Set wsEntity = wbEntity.Sheets(1)
     
     '▼ "Entity" シートの存在確認
-    On Error Resume Next
-    Set wsOut = wbOut.Sheets("Entity")
-    On Error GoTo 0
+    Dim ws As Worksheet
+    Dim sheetExists As Boolean
+    sheetExists = False
     
-    If wsOut Is Nothing Then
-        Err.Raise 105, , "テンプレートに 'Entity' シートが存在しません。"
+    For Each ws In wbOut.Sheets
+        If ws.Name = "Entity" Then
+            sheetExists = True
+            Set wsOut = ws
+            Exit For
+        End If
+    Next ws
+    
+    '▼ シートが存在しない場合は新規作成
+    If Not sheetExists Then
+        Set wsOut = wbOut.Sheets.Add
+        wsOut.Name = "Entity"
+    End If
+    
+    '▼ ヘッダー行を設定（既存シートの場合も上書き）
+    wsOut.Cells(1, 1).Value = "項目名"
+    wsOut.Cells(1, 2).Value = "値"
+    
+    '▼ 既存データをクリア（2行目以降）
+    Dim lastRow As Long
+    lastRow = wsOut.Cells(wsOut.Rows.Count, 1).End(xlUp).Row
+    If lastRow > 1 Then
+        wsOut.Range(wsOut.Cells(2, 1), wsOut.Cells(lastRow, 2)).ClearContents
     End If
     
     Set dic = GetEntityMappingDict()
