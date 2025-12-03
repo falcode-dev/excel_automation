@@ -9,8 +9,8 @@ Public Sub メイン処理_Entityのみ()
     Dim folderBase As String
     Dim folderEntity As String
     Dim folderOutput As String
-    'Dim folderTemplate As String
-    'Dim templatePath As String
+    Dim folderTemplate As String
+    Dim templatePath As String
     
     Dim entityFile As String
     Dim entityPath As String
@@ -18,7 +18,7 @@ Public Sub メイン処理_Entityのみ()
     
     Dim wbOut As Workbook
     Dim wbEntity As Workbook
-    'Dim wbTemplate As Workbook
+    Dim wbTemplate As Workbook
     
     On Error GoTo ERR_HANDLER
     
@@ -28,14 +28,14 @@ Public Sub メイン処理_Entityのみ()
     '▼ 必要なフォルダ
     folderEntity = folderBase & "10_entity\"
     folderOutput = folderBase & "30_create_file\"
-    'folderTemplate = folderBase & "template\"
+    folderTemplate = folderBase & "template\"
     
     '▼ フォルダ存在チェック
     If Dir(folderEntity, vbDirectory) = "" Then Err.Raise 100, , "10_entity フォルダがありません。"
     If Dir(folderOutput, vbDirectory) = "" Then Err.Raise 102, , "30_create_file フォルダがありません。"
-    'If Dir(folderTemplate, vbDirectory) = "" Then Err.Raise 101, , "template フォルダがありません。"
-    'templatePath = folderTemplate & "template.xlsx"
-    'If Dir(templatePath) = "" Then Err.Raise 103, , "template.xlsx が見つかりません。"
+    If Dir(folderTemplate, vbDirectory) = "" Then Err.Raise 101, , "template フォルダがありません。"
+    templatePath = folderTemplate & "template.xlsx"
+    If Dir(templatePath) = "" Then Err.Raise 103, , "template.xlsx が見つかりません。"
     
     '▼ entity フォルダの全Excelを処理
     entityFile = Dir(folderEntity & "*.xlsx")
@@ -48,16 +48,8 @@ Public Sub メイン処理_Entityのみ()
         '▼ entity を開く
         Set wbEntity = Workbooks.Open(entityPath, ReadOnly:=True)
         
-        '▼ テンプレートを開く（非活性）
-        'Set wbTemplate = Workbooks.Open(templatePath, ReadOnly:=True)
-        
-        '▼ 新規ワークブックを作成
-        Set wbOut = Workbooks.Add
-        
-        '=====================================
-        '  ★ entity の情報を新規Excelに出力
-        '=====================================
-        Call SetEntityInfoToNewWorkbook(wbOut, wbEntity)
+        '▼ テンプレートを開く
+        Set wbTemplate = Workbooks.Open(templatePath, ReadOnly:=True)
         
         '▼ 出力先ファイル名を生成（エンティティ定義書_ID_XXX_v0.0.xlsx）
         Dim fileNameWithoutExt As String
@@ -70,14 +62,18 @@ Public Sub メイン処理_Entityのみ()
         End If
         outputPath = folderOutput & "エンティティ定義書_ID_" & fileNameWithoutExt & "_v0.0.xlsx"
         
-        '▼ テンプレートをコピー（非活性）
-        'wbTemplate.SaveCopyAs outputPath
-        'Set wbOut = Workbooks.Open(outputPath)
+        '▼ テンプレートをコピー
+        wbTemplate.SaveCopyAs outputPath
+        Set wbOut = Workbooks.Open(outputPath)
+        
+        '=====================================
+        '  ★ entity の情報をテンプレートに出力
+        '=====================================
+        Call SetEntityInfoToTemplate(wbOut, wbEntity)
         
         '▼ 保存して閉じる
-        wbOut.SaveAs outputPath
-        wbOut.Close SaveChanges:=False
-        'wbTemplate.Close SaveChanges:=False
+        wbOut.Close SaveChanges:=True
+        wbTemplate.Close SaveChanges:=False
         wbEntity.Close SaveChanges:=False
         
         entityFile = Dir()
@@ -101,7 +97,7 @@ ERR_HANDLER:
     '▼ エラー情報を保存した後、エラーを無視してクリーンアップ処理
     On Error Resume Next
     If Not wbOut Is Nothing Then wbOut.Close SaveChanges:=False
-    'If Not wbTemplate Is Nothing Then wbTemplate.Close SaveChanges:=False
+    If Not wbTemplate Is Nothing Then wbTemplate.Close SaveChanges:=False
     If Not wbEntity Is Nothing Then wbEntity.Close SaveChanges:=False
     On Error GoTo 0
     
@@ -203,48 +199,203 @@ End Function
 
 
 '========================================================================
-'  entity.xlsx → 新規ワークブックへ出力
+'  entity.xlsx → テンプレートへ出力
 '
-'  出力先：新規ワークブックの最初のシート
-'  出力形式：A列＝日本語名、B列＝値
+'  出力先：テンプレートの指定セル
+'  変更したセルは赤文字にする
 '========================================================================
-Public Sub SetEntityInfoToNewWorkbook(wbOut As Workbook, wbEntity As Workbook)
+Public Sub SetEntityInfoToTemplate(wbOut As Workbook, wbEntity As Workbook)
 
     Dim wsEntity As Worksheet
-    Dim wsOut As Worksheet
+    Dim wsCover As Worksheet
+    Dim wsTable As Worksheet
     Dim dic As Object
     Dim lastCol As Long
     Dim col As Long
-    Dim engKey As String, val As String, jpKey As String
-    Dim rowOut As Long: rowOut = 2
+    Dim engKey As String, val As String
+    Dim cell As Range
     
     Set wsEntity = wbEntity.Sheets(1)
-    Set wsOut = wbOut.Sheets(1)
-    wsOut.Name = "Entity"
-    
-    '▼ ヘッダー行を設定
-    wsOut.Cells(1, 1).Value = "項目名"
-    wsOut.Cells(1, 2).Value = "値"
-    
+    Set wsCover = wbOut.Sheets("表紙")
+    Set wsTable = wbOut.Sheets("テーブル")
     Set dic = GetEntityMappingDict()
+    
+    '▼ entity からデータを取得
+    Dim entityData As Object
+    Set entityData = CreateObject("Scripting.Dictionary")
     
     lastCol = wsEntity.Cells(1, wsEntity.Columns.Count).End(xlToLeft).Column
     
     For col = 1 To lastCol
-        
         engKey = Trim(wsEntity.Cells(1, col).Value)
         val = Trim(wsEntity.Cells(2, col).Value)
-        
-        If dic.Exists(engKey) Then
-            
-            jpKey = dic(engKey)
-            
-            wsOut.Cells(rowOut, 1).Value = jpKey
-            wsOut.Cells(rowOut, 2).Value = ConvertEntityValue(engKey, val)
-            
-            rowOut = rowOut + 1
+        If engKey <> "" Then
+            entityData(engKey) = val
         End If
-        
     Next col
+    
+    '▼ シート「表紙」に値を設定
+    If entityData.Exists("DisplayName") Then
+        Set cell = wsCover.Range("W21")
+        cell.Value = ConvertEntityValue("DisplayName", entityData("DisplayName"))
+        cell.Font.Color = RGB(255, 0, 0)  '赤文字
+    End If
+    
+    '▼ シート「テーブル」に値を設定
+    If entityData.Exists("DisplayName") Then
+        Set cell = wsTable.Range("E5")
+        cell.Value = ConvertEntityValue("DisplayName", entityData("DisplayName"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("DisplayCollectionName") Then
+        Set cell = wsTable.Range("E6")
+        cell.Value = ConvertEntityValue("DisplayCollectionName", entityData("DisplayCollectionName"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("SchemaName") Then
+        Set cell = wsTable.Range("E7")
+        cell.Value = ConvertEntityValue("SchemaName", entityData("SchemaName"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("Description") Then
+        Set cell = wsTable.Range("E8")
+        cell.Value = ConvertEntityValue("Description", entityData("Description"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("TableType") Then
+        Set cell = wsTable.Range("E9")
+        cell.Value = ConvertEntityValue("TableType", entityData("TableType"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("OwnershipType") Then
+        Set cell = wsTable.Range("E10")
+        cell.Value = ConvertEntityValue("OwnershipType", entityData("OwnershipType"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("PrimaryImageAttribute") Then
+        Set cell = wsTable.Range("E11")
+        cell.Value = ConvertEntityValue("PrimaryImageAttribute", entityData("PrimaryImageAttribute"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("EntityColor") Then
+        Set cell = wsTable.Range("E12")
+        cell.Value = ConvertEntityValue("EntityColor", entityData("EntityColor"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("HasNotes") Then
+        Set cell = wsTable.Range("E13")
+        cell.Value = ConvertEntityValue("HasNotes", entityData("HasNotes"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("IsDuplicateDetectionEnabled") Then
+        Set cell = wsTable.Range("E20")
+        cell.Value = ConvertEntityValue("IsDuplicateDetectionEnabled", entityData("IsDuplicateDetectionEnabled"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("ChangeTrackingEnabled") Then
+        Set cell = wsTable.Range("E21")
+        cell.Value = ConvertEntityValue("ChangeTrackingEnabled", entityData("ChangeTrackingEnabled"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("IsKnowledgeManagementEnabled") Then
+        Set cell = wsTable.Range("E22")
+        cell.Value = ConvertEntityValue("IsKnowledgeManagementEnabled", entityData("IsKnowledgeManagementEnabled"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("EntityHelpUrlEnabled") Then
+        Set cell = wsTable.Range("E23")
+        cell.Value = ConvertEntityValue("EntityHelpUrlEnabled", entityData("EntityHelpUrlEnabled"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("EntityHelpUrl") Then
+        Set cell = wsTable.Range("E24")
+        cell.Value = ConvertEntityValue("EntityHelpUrl", entityData("EntityHelpUrl"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("IsAuditEnabled") Then
+        Set cell = wsTable.Range("E25")
+        cell.Value = ConvertEntityValue("IsAuditEnabled", entityData("IsAuditEnabled"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("IsQuickCreateEnabled") Then
+        Set cell = wsTable.Range("E26")
+        cell.Value = ConvertEntityValue("IsQuickCreateEnabled", entityData("IsQuickCreateEnabled"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("HasActivities") Then
+        Set cell = wsTable.Range("E27")
+        cell.Value = ConvertEntityValue("HasActivities", entityData("HasActivities"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("IsMailMergeEnabled") Then
+        Set cell = wsTable.Range("E28")
+        cell.Value = ConvertEntityValue("IsMailMergeEnabled", entityData("IsMailMergeEnabled"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("IsSLAEnabled") Then
+        Set cell = wsTable.Range("E29")
+        cell.Value = ConvertEntityValue("IsSLAEnabled", entityData("IsSLAEnabled"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("IsDocumentManagementEnabled") Then
+        Set cell = wsTable.Range("E31")
+        cell.Value = ConvertEntityValue("IsDocumentManagementEnabled", entityData("IsDocumentManagementEnabled"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("IsConnectionsEnabled") Then
+        Set cell = wsTable.Range("E32")
+        cell.Value = ConvertEntityValue("IsConnectionsEnabled", entityData("IsConnectionsEnabled"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("AutoCreateAccessTeams") Then
+        Set cell = wsTable.Range("E34")
+        cell.Value = ConvertEntityValue("AutoCreateAccessTeams", entityData("AutoCreateAccessTeams"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("HasFeedback") Then
+        Set cell = wsTable.Range("E35")
+        cell.Value = ConvertEntityValue("HasFeedback", entityData("HasFeedback"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("IsValidForAdvancedFind") Then
+        Set cell = wsTable.Range("E36")
+        cell.Value = ConvertEntityValue("IsValidForAdvancedFind", entityData("IsValidForAdvancedFind"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("IsAvailableOffline") Then
+        Set cell = wsTable.Range("E37")
+        cell.Value = ConvertEntityValue("IsAvailableOffline", entityData("IsAvailableOffline"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
+    
+    If entityData.Exists("IsValidForQueue") Then
+        Set cell = wsTable.Range("E38")
+        cell.Value = ConvertEntityValue("IsValidForQueue", entityData("IsValidForQueue"))
+        cell.Font.Color = RGB(255, 0, 0)
+    End If
 
 End Sub
