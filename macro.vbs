@@ -45,11 +45,15 @@ outPath = fso.GetAbsolutePathName("作成済エクセル\" & outFileName)
 '=========================
 ' テンプレートをコピー
 '=========================
+Dim sheetNameCover, sheetNameTable
+sheetNameCover = "表紙"
+sheetNameTable = "テーブル"
+
 Set wbDst = excel.Workbooks.Open(templatePath)
 wbDst.SaveAs outPath
 
-Set dstSheetCover = wbDst.Sheets("表紙")
-Set dstSheetTable = wbDst.Sheets("テーブル")
+Set dstSheetCover = wbDst.Sheets(sheetNameCover)
+Set dstSheetTable = wbDst.Sheets(sheetNameTable)
 
 '=========================
 ' マッピング（EntityMetadata → セル）
@@ -141,7 +145,7 @@ For Each key In mapping.Keys
     value = ConvertValue(metaName, value)
 
     ' 出力先シート
-    If sheetName = "表紙" Then
+    If sheetName = sheetNameCover Then
         Set dstSheet = dstSheetCover
     Else
         Set dstSheet = dstSheetTable
