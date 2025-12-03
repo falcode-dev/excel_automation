@@ -8,16 +8,19 @@ Public Sub メイン処理_Entityのみ()
     Dim wbThis As Workbook
     Dim folderBase As String
     Dim folderEntity As String
+    Dim folderAttribute As String
     Dim folderOutput As String
     Dim folderTemplate As String
     Dim templatePath As String
     
     Dim entityFile As String
     Dim entityPath As String
+    Dim attributePath As String
     Dim outputPath As String
     
     Dim wbOut As Workbook
     Dim wbEntity As Workbook
+    Dim wbAttribute As Workbook
     Dim wbTemplate As Workbook
     
     On Error GoTo ERR_HANDLER
@@ -27,11 +30,13 @@ Public Sub メイン処理_Entityのみ()
     
     '▼ 必要なフォルダ
     folderEntity = folderBase & "10_entity\"
+    folderAttribute = folderBase & "20_attribute\"
     folderOutput = folderBase & "30_create_file\"
     folderTemplate = folderBase & "template\"
     
     '▼ フォルダ存在チェック
     If Dir(folderEntity, vbDirectory) = "" Then Err.Raise 100, , "10_entity フォルダがありません。"
+    If Dir(folderAttribute, vbDirectory) = "" Then Err.Raise 105, , "20_attribute フォルダがありません。"
     If Dir(folderOutput, vbDirectory) = "" Then Err.Raise 102, , "30_create_file フォルダがありません。"
     If Dir(folderTemplate, vbDirectory) = "" Then Err.Raise 101, , "template フォルダがありません。"
     templatePath = folderTemplate & "template.xlsx"
@@ -75,6 +80,19 @@ Public Sub メイン処理_Entityのみ()
         '=====================================
         Call SetEntityInfoToTemplate(wbOut, wbEntity)
         
+        '▼ attribute ファイルを開く（存在する場合）
+        attributePath = folderAttribute & entityFile
+        If Dir(attributePath) <> "" Then
+            Set wbAttribute = Workbooks.Open(attributePath, ReadOnly:=True)
+            
+            '=====================================
+            '  ★ attribute の情報をテンプレートに出力
+            '=====================================
+            Call SetAttributeInfoToTemplate(wbOut, wbAttribute)
+            
+            wbAttribute.Close SaveChanges:=False
+        End If
+        
         '▼ 保存して閉じる
         wbOut.Close SaveChanges:=True
         wbTemplate.Close SaveChanges:=False
@@ -103,6 +121,7 @@ ERR_HANDLER:
     If Not wbOut Is Nothing Then wbOut.Close SaveChanges:=False
     If Not wbTemplate Is Nothing Then wbTemplate.Close SaveChanges:=False
     If Not wbEntity Is Nothing Then wbEntity.Close SaveChanges:=False
+    If Not wbAttribute Is Nothing Then wbAttribute.Close SaveChanges:=False
     On Error GoTo 0
     
     '▼ 保存したエラー情報を表示
@@ -431,3 +450,214 @@ Public Sub SetEntityInfoToTemplate(wbOut As Workbook, wbEntity As Workbook)
     End If
 
 End Sub
+
+
+'========================================================================
+'  attribute.xlsx → テンプレートへ出力
+'
+'  出力先：シート「テーブル」とシート「フィールド」
+'  変更したセルは赤文字にする
+'========================================================================
+Public Sub SetAttributeInfoToTemplate(wbOut As Workbook, wbAttribute As Workbook)
+
+    Dim wsAttribute As Worksheet
+    Dim wsTable As Worksheet
+    Dim wsField As Worksheet
+    Dim lastCol As Long
+    Dim lastRow As Long
+    Dim col As Long
+    Dim row As Long
+    Dim colIndex As Object
+    Dim primaryNameRow As Long
+    Dim cell As Range
+    
+    Set wsAttribute = wbAttribute.Sheets(1)
+    Set wsTable = wbOut.Sheets("テーブル")
+    Set wsField = wbOut.Sheets("フィールド")
+    
+    '▼ 列名のインデックスを取得
+    Set colIndex = CreateObject("Scripting.Dictionary")
+    lastCol = wsAttribute.Cells(1, wsAttribute.Columns.Count).End(xlToLeft).Column
+    
+    For col = 1 To lastCol
+        Dim colName As String
+        colName = Trim(wsAttribute.Cells(1, col).Value)
+        If colName <> "" Then
+            colIndex(colName) = col
+        End If
+    Next col
+    
+    '▼ データ行数を取得
+    lastRow = wsAttribute.Cells(wsAttribute.Rows.Count, 1).End(xlUp).Row
+    
+    '▼ IsPrimaryName が True の行を探す
+    primaryNameRow = 0
+    If colIndex.Exists("IsPrimaryName") Then
+        Dim primaryNameCol As Long
+        primaryNameCol = colIndex("IsPrimaryName")
+        For row = 2 To lastRow
+            If LCase(Trim(wsAttribute.Cells(row, primaryNameCol).Value)) = "true" Then
+                primaryNameRow = row
+                Exit For
+            End If
+        Next row
+    End If
+    
+    '▼ シート「テーブル」に IsPrimaryName が True の行のデータを設定
+    If primaryNameRow > 0 Then
+        If colIndex.Exists("DisplayName") Then
+            Set cell = wsTable.Range("E14")
+            cell.Value = Trim(wsAttribute.Cells(primaryNameRow, colIndex("DisplayName")).Value)
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        If colIndex.Exists("Description") Then
+            Set cell = wsTable.Range("E15")
+            cell.Value = Trim(wsAttribute.Cells(primaryNameRow, colIndex("Description")).Value)
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        If colIndex.Exists("SchemaName") Then
+            Set cell = wsTable.Range("E16")
+            cell.Value = Trim(wsAttribute.Cells(primaryNameRow, colIndex("SchemaName")).Value)
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        If colIndex.Exists("LogicalName") Then
+            Set cell = wsTable.Range("E17")
+            cell.Value = Trim(wsAttribute.Cells(primaryNameRow, colIndex("LogicalName")).Value)
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        If colIndex.Exists("RequiredLevel") Then
+            Set cell = wsTable.Range("E18")
+            cell.Value = Trim(wsAttribute.Cells(primaryNameRow, colIndex("RequiredLevel")).Value)
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+    End If
+    
+    '▼ シート「フィールド」に全 attribute データを記述（7行目から）
+    Dim fieldRow As Long
+    fieldRow = 7
+    
+    For row = 2 To lastRow
+        'E列: SchemaName
+        If colIndex.Exists("SchemaName") Then
+            Set cell = wsField.Cells(fieldRow, 5)  'E列
+            cell.Value = Trim(wsAttribute.Cells(row, colIndex("SchemaName")).Value)
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'F列: DisplayName
+        If colIndex.Exists("DisplayName") Then
+            Set cell = wsField.Cells(fieldRow, 6)  'F列
+            cell.Value = Trim(wsAttribute.Cells(row, colIndex("DisplayName")).Value)
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'G列: LogicalName
+        If colIndex.Exists("LogicalName") Then
+            Set cell = wsField.Cells(fieldRow, 7)  'G列
+            cell.Value = Trim(wsAttribute.Cells(row, colIndex("LogicalName")).Value)
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'H列: IsCustomAttribute
+        If colIndex.Exists("IsCustomAttribute") Then
+            Set cell = wsField.Cells(fieldRow, 8)  'H列
+            cell.Value = ConvertAttributeValue("IsCustomAttribute", Trim(wsAttribute.Cells(row, colIndex("IsCustomAttribute")).Value))
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'I列: IsPrimaryID
+        If colIndex.Exists("IsPrimaryID") Then
+            Set cell = wsField.Cells(fieldRow, 9)  'I列
+            cell.Value = ConvertAttributeValue("IsPrimaryID", Trim(wsAttribute.Cells(row, colIndex("IsPrimaryID")).Value))
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'J列: IsPrimaryName
+        If colIndex.Exists("IsPrimaryName") Then
+            Set cell = wsField.Cells(fieldRow, 10)  'J列
+            cell.Value = ConvertAttributeValue("IsPrimaryName", Trim(wsAttribute.Cells(row, colIndex("IsPrimaryName")).Value))
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'K列: AttributeTypeName
+        If colIndex.Exists("AttributeTypeName") Then
+            Set cell = wsField.Cells(fieldRow, 11)  'K列
+            cell.Value = Trim(wsAttribute.Cells(row, colIndex("AttributeTypeName")).Value)
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'M列: RequiredLevel
+        If colIndex.Exists("RequiredLevel") Then
+            Set cell = wsField.Cells(fieldRow, 13)  'M列
+            cell.Value = Trim(wsAttribute.Cells(row, colIndex("RequiredLevel")).Value)
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'Y列: IsAuditEnabled
+        If colIndex.Exists("IsAuditEnabled") Then
+            Set cell = wsField.Cells(fieldRow, 25)  'Y列
+            cell.Value = ConvertAttributeValue("IsAuditEnabled", Trim(wsAttribute.Cells(row, colIndex("IsAuditEnabled")).Value))
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'AA列: IsGlobalFilterEnabled
+        If colIndex.Exists("IsGlobalFilterEnabled") Then
+            Set cell = wsField.Cells(fieldRow, 27)  'AA列
+            cell.Value = ConvertAttributeValue("IsGlobalFilterEnabled", Trim(wsAttribute.Cells(row, colIndex("IsGlobalFilterEnabled")).Value))
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'AB列: IsSortableEnabled
+        If colIndex.Exists("IsSortableEnabled") Then
+            Set cell = wsField.Cells(fieldRow, 28)  'AB列
+            cell.Value = ConvertAttributeValue("IsSortableEnabled", Trim(wsAttribute.Cells(row, colIndex("IsSortableEnabled")).Value))
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'AC列: IsSearchable
+        If colIndex.Exists("IsSearchable") Then
+            Set cell = wsField.Cells(fieldRow, 29)  'AC列
+            cell.Value = ConvertAttributeValue("IsSearchable", Trim(wsAttribute.Cells(row, colIndex("IsSearchable")).Value))
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'AF列: Description
+        If colIndex.Exists("Description") Then
+            Set cell = wsField.Cells(fieldRow, 32)  'AF列
+            cell.Value = Trim(wsAttribute.Cells(row, colIndex("Description")).Value)
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        'AG列: IsSecret
+        If colIndex.Exists("IsSecret") Then
+            Set cell = wsField.Cells(fieldRow, 33)  'AG列
+            cell.Value = ConvertAttributeValue("IsSecret", Trim(wsAttribute.Cells(row, colIndex("IsSecret")).Value))
+            cell.Font.Color = RGB(255, 0, 0)
+        End If
+        
+        fieldRow = fieldRow + 1
+    Next row
+
+End Sub
+
+
+'========================================================================
+'  attribute 値変換（True/False）
+'========================================================================
+Private Function ConvertAttributeValue(key As String, val As String) As String
+    
+    val = Trim(val)
+    
+    If LCase(val) = "true" Then
+        ConvertAttributeValue = "ON"
+    ElseIf LCase(val) = "false" Then
+        ConvertAttributeValue = "-"
+    Else
+        ConvertAttributeValue = val
+    End If
+
+End Function
