@@ -9,6 +9,8 @@ Public Sub メイン処理_Entityのみ()
     Dim folderBase As String
     Dim folderEntity As String
     Dim folderOutput As String
+    'Dim folderTemplate As String
+    'Dim templatePath As String
     
     Dim entityFile As String
     Dim entityPath As String
@@ -16,6 +18,7 @@ Public Sub メイン処理_Entityのみ()
     
     Dim wbOut As Workbook
     Dim wbEntity As Workbook
+    'Dim wbTemplate As Workbook
     
     On Error GoTo ERR_HANDLER
     
@@ -25,10 +28,14 @@ Public Sub メイン処理_Entityのみ()
     '▼ 必要なフォルダ
     folderEntity = folderBase & "10_entity\"
     folderOutput = folderBase & "30_create_file\"
+    'folderTemplate = folderBase & "template\"
     
     '▼ フォルダ存在チェック
     If Dir(folderEntity, vbDirectory) = "" Then Err.Raise 100, , "10_entity フォルダがありません。"
     If Dir(folderOutput, vbDirectory) = "" Then Err.Raise 102, , "30_create_file フォルダがありません。"
+    'If Dir(folderTemplate, vbDirectory) = "" Then Err.Raise 101, , "template フォルダがありません。"
+    'templatePath = folderTemplate & "template.xlsx"
+    'If Dir(templatePath) = "" Then Err.Raise 103, , "template.xlsx が見つかりません。"
     
     '▼ entity フォルダの全Excelを処理
     entityFile = Dir(folderEntity & "*.xlsx")
@@ -41,6 +48,9 @@ Public Sub メイン処理_Entityのみ()
         '▼ entity を開く
         Set wbEntity = Workbooks.Open(entityPath, ReadOnly:=True)
         
+        '▼ テンプレートを開く（非活性）
+        'Set wbTemplate = Workbooks.Open(templatePath, ReadOnly:=True)
+        
         '▼ 新規ワークブックを作成
         Set wbOut = Workbooks.Add
         
@@ -52,9 +62,14 @@ Public Sub メイン処理_Entityのみ()
         '▼ 出力先ファイル名
         outputPath = folderOutput & entityFile
         
+        '▼ テンプレートをコピー（非活性）
+        'wbTemplate.SaveCopyAs outputPath
+        'Set wbOut = Workbooks.Open(outputPath)
+        
         '▼ 保存して閉じる
         wbOut.SaveAs outputPath
         wbOut.Close SaveChanges:=False
+        'wbTemplate.Close SaveChanges:=False
         wbEntity.Close SaveChanges:=False
         
         entityFile = Dir()
@@ -78,6 +93,7 @@ ERR_HANDLER:
     '▼ エラー情報を保存した後、エラーを無視してクリーンアップ処理
     On Error Resume Next
     If Not wbOut Is Nothing Then wbOut.Close SaveChanges:=False
+    'If Not wbTemplate Is Nothing Then wbTemplate.Close SaveChanges:=False
     If Not wbEntity Is Nothing Then wbEntity.Close SaveChanges:=False
     On Error GoTo 0
     
