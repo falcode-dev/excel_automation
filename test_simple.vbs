@@ -1,94 +1,80 @@
 Option Explicit
 
 '────────────────────────────────────────
-'  メイン処理（大枠）
+'  メイン処理（attribute 不使用バージョン）
 '────────────────────────────────────────
-Public Sub メイン処理_大枠()
+Public Sub メイン処理_Entityのみ()
 
     Dim wbThis As Workbook
     Dim folderBase As String
     Dim folderEntity As String
-    Dim folderAttr As String
     Dim folderTemplate As String
     Dim folderOutput As String
     
     Dim templatePath As String
     Dim entityFile As String
     Dim entityPath As String
-    Dim attrPath As String
     Dim outputPath As String
     
     Dim wbTemplate As Workbook
     Dim wbOut As Workbook
     Dim wbEntity As Workbook
-    Dim wbAttr As Workbook
     
     On Error GoTo ERR_HANDLER
     
     Set wbThis = ThisWorkbook
     folderBase = wbThis.Path & "\"
     
-    '▼ フォルダ設定
+    '▼ 必要なフォルダ
     folderEntity = folderBase & "10_entity\"
-    folderAttr = folderBase & "20_attribute\"
     folderTemplate = folderBase & "template\"
     folderOutput = folderBase & "30_create_file\"
     
     '▼ フォルダ存在チェック
     If Dir(folderEntity, vbDirectory) = "" Then Err.Raise 100, , "10_entity フォルダがありません。"
-    If Dir(folderAttr, vbDirectory) = "" Then Err.Raise 101, , "20_attribute フォルダがありません。"
-    If Dir(folderTemplate, vbDirectory) = "" Then Err.Raise 102, , "template フォルダがありません。"
-    If Dir(folderOutput, vbDirectory) = "" Then Err.Raise 103, , "30_create_file フォルダがありません。"
+    If Dir(folderTemplate, vbDirectory) = "" Then Err.Raise 101, , "template フォルダがありません。"
+    If Dir(folderOutput, vbDirectory) = "" Then Err.Raise 102, , "30_create_file フォルダがありません。"
     
     templatePath = folderTemplate & "template.xlsx"
-    If Dir(templatePath) = "" Then Err.Raise 104, , "template.xlsx が見つかりません。"
+    If Dir(templatePath) = "" Then Err.Raise 103, , "template.xlsx が見つかりません。"
     
     '▼ entity フォルダの全Excelを処理
     entityFile = Dir(folderEntity & "*.xlsx")
-    If entityFile = "" Then Err.Raise 105, , "10_entity に処理対象ファイルがありません。"
+    If entityFile = "" Then Err.Raise 104, , "10_entity に処理対象ファイルがありません。"
     
     Do While entityFile <> ""
     
         entityPath = folderEntity & entityFile
-        attrPath = folderAttr & entityFile
         
-        If Dir(attrPath) = "" Then
-            Err.Raise 106, , "20_attribute に対応ファイルがありません: " & entityFile
-        End If
-        
-        '▼ entity / attribute を開く
+        '▼ entity を開く
         Set wbEntity = Workbooks.Open(entityPath, ReadOnly:=True)
-        Set wbAttr = Workbooks.Open(attrPath, ReadOnly:=True)
         
         '▼ テンプレートを開く
         Set wbTemplate = Workbooks.Open(templatePath, ReadOnly:=True)
         
-        '▼ 出力先のファイル名は entity と同名
+        '▼ 出力先ファイル名
         outputPath = folderOutput & entityFile
         
-        'テンプレートからコピー作成
+        '▼ テンプレートをコピー
         wbTemplate.SaveCopyAs outputPath
         
-        'コピーしたファイルを開く
+        'コピーしたものを開く
         Set wbOut = Workbooks.Open(outputPath)
         
-        '====================================================
-        '  ★★★ ここで処理を実行 ★★★
-        '====================================================
+        '=====================================
+        '  ★ entity の情報だけを出力する処理
+        '=====================================
         Call SetEntityInfoToTemplate(wbOut, wbEntity)
-        'Call SetAttributeInfoToTemplate(wbOut, wbAttr)  ← 後で仕様確定時に追加
-        '====================================================
         
-        '▼ 正常終了時はすべて閉じる
+        '▼ 正常終了時のクローズ
         wbOut.Close SaveChanges:=True
         wbTemplate.Close SaveChanges:=False
         wbEntity.Close SaveChanges:=False
-        wbAttr.Close SaveChanges:=False
         
         entityFile = Dir()
     Loop
     
-    MsgBox "大枠処理が完了しました。", vbInformation
+    MsgBox "entity データのみの出力が完了しました。", vbInformation
     Exit Sub
 
 '────────────────────────────────────────
@@ -98,12 +84,10 @@ ERR_HANDLER:
     If Not wbOut Is Nothing Then wbOut.Close SaveChanges:=False
     If Not wbTemplate Is Nothing Then wbTemplate.Close SaveChanges:=False
     If Not wbEntity Is Nothing Then wbEntity.Close SaveChanges:=False
-    If Not wbAttr Is Nothing Then wbAttr.Close SaveChanges:=False
     
     MsgBox "エラー：" & Err.Description, vbCritical
 
 End Sub
-
 
 
 '========================================================================
@@ -143,7 +127,6 @@ Private Function GetEntityMappingDict() As Object
 
     Set GetEntityMappingDict = dic
 End Function
-
 
 
 '========================================================================
@@ -190,7 +173,6 @@ Private Function ConvertEntityValue(key As String, val As String) As String
 End Function
 
 
-
 '========================================================================
 '  entity.xlsx → テンプレートへ出力
 '
@@ -205,7 +187,7 @@ Public Sub SetEntityInfoToTemplate(wbOut As Workbook, wbEntity As Workbook)
     Dim lastCol As Long
     Dim col As Long
     Dim engKey As String, val As String, jpKey As String
-    Dim rowOut As Long: rowOut = 2  'テンプレート側の開始行
+    Dim rowOut As Long: rowOut = 2
     
     Set wsEntity = wbEntity.Sheets(1)
     Set wsOut = wbOut.Sheets("Entity")   'テンプレートのシート名
