@@ -48,19 +48,23 @@ Public Sub メイン処理_Entityのみ()
         '▼ entity を開く
         Set wbEntity = Workbooks.Open(entityPath, ReadOnly:=True)
         
+        '▼ 表示名を取得してファイル名を生成（エンティティ定義書_ID_XXX_v0.0.xlsx）
+        Dim displayName As String
+        displayName = GetDisplayNameFromEntity(wbEntity)
+        If displayName = "" Then
+            '表示名が取得できない場合は元のファイル名を使用
+            Dim dotPos As Long
+            dotPos = InStrRev(entityFile, ".")
+            If dotPos > 0 Then
+                displayName = Left(entityFile, dotPos - 1)
+            Else
+                displayName = entityFile
+            End If
+        End If
+        outputPath = folderOutput & "エンティティ定義書_ID_" & displayName & "_v0.0.xlsx"
+        
         '▼ テンプレートを開く
         Set wbTemplate = Workbooks.Open(templatePath, ReadOnly:=True)
-        
-        '▼ 出力先ファイル名を生成（エンティティ定義書_ID_XXX_v0.0.xlsx）
-        Dim fileNameWithoutExt As String
-        Dim dotPos As Long
-        dotPos = InStrRev(entityFile, ".")
-        If dotPos > 0 Then
-            fileNameWithoutExt = Left(entityFile, dotPos - 1)
-        Else
-            fileNameWithoutExt = entityFile
-        End If
-        outputPath = folderOutput & "エンティティ定義書_ID_" & fileNameWithoutExt & "_v0.0.xlsx"
         
         '▼ テンプレートをコピー
         wbTemplate.SaveCopyAs outputPath
@@ -155,6 +159,34 @@ End Function
 
 
 '========================================================================
+'  entity から表示名を取得
+'========================================================================
+Private Function GetDisplayNameFromEntity(wbEntity As Workbook) As String
+
+    Dim wsEntity As Worksheet
+    Dim lastCol As Long
+    Dim col As Long
+    Dim engKey As String
+    Dim val As String
+    
+    Set wsEntity = wbEntity.Sheets(1)
+    lastCol = wsEntity.Cells(1, wsEntity.Columns.Count).End(xlToLeft).Column
+    
+    For col = 1 To lastCol
+        engKey = Trim(wsEntity.Cells(1, col).Value)
+        If LCase(engKey) = "displayname" Then
+            val = Trim(wsEntity.Cells(2, col).Value)
+            GetDisplayNameFromEntity = val
+            Exit Function
+        End If
+    Next col
+    
+    GetDisplayNameFromEntity = ""
+
+End Function
+
+
+'========================================================================
 '  値変換（True/False・所有権・種類・画像）
 '========================================================================
 Private Function ConvertEntityValue(key As String, val As String) As String
@@ -187,7 +219,7 @@ Private Function ConvertEntityValue(key As String, val As String) As String
         
         Case Else
             If LCase(val) = "true" Then
-                ConvertEntityValue = "チェック"
+                ConvertEntityValue = "ON"
             ElseIf LCase(val) = "false" Then
                 ConvertEntityValue = "-"
             Else
