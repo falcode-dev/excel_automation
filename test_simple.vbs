@@ -1,22 +1,19 @@
 Option Explicit
 
 '────────────────────────────────────────
-'  メイン処理（attribute 不使用バージョン）
+'  メイン処理（シンプル版：テンプレート不使用）
 '────────────────────────────────────────
 Public Sub メイン処理_Entityのみ()
 
     Dim wbThis As Workbook
     Dim folderBase As String
     Dim folderEntity As String
-    Dim folderTemplate As String
     Dim folderOutput As String
     
-    Dim templatePath As String
     Dim entityFile As String
     Dim entityPath As String
     Dim outputPath As String
     
-    Dim wbTemplate As Workbook
     Dim wbOut As Workbook
     Dim wbEntity As Workbook
     
@@ -27,16 +24,11 @@ Public Sub メイン処理_Entityのみ()
     
     '▼ 必要なフォルダ
     folderEntity = folderBase & "10_entity\"
-    folderTemplate = folderBase & "template\"
     folderOutput = folderBase & "30_create_file\"
     
     '▼ フォルダ存在チェック
     If Dir(folderEntity, vbDirectory) = "" Then Err.Raise 100, , "10_entity フォルダがありません。"
-    If Dir(folderTemplate, vbDirectory) = "" Then Err.Raise 101, , "template フォルダがありません。"
     If Dir(folderOutput, vbDirectory) = "" Then Err.Raise 102, , "30_create_file フォルダがありません。"
-    
-    templatePath = folderTemplate & "template.xlsx"
-    If Dir(templatePath) = "" Then Err.Raise 103, , "template.xlsx が見つかりません。"
     
     '▼ entity フォルダの全Excelを処理
     entityFile = Dir(folderEntity & "*.xlsx")
@@ -49,46 +41,54 @@ Public Sub メイン処理_Entityのみ()
         '▼ entity を開く
         Set wbEntity = Workbooks.Open(entityPath, ReadOnly:=True)
         
-        '▼ テンプレートを開く
-        Set wbTemplate = Workbooks.Open(templatePath, ReadOnly:=True)
+        '▼ 新規ワークブックを作成
+        Set wbOut = Workbooks.Add
+        
+        '=====================================
+        '  ★ entity の情報を新規Excelに出力
+        '=====================================
+        Call SetEntityInfoToNewWorkbook(wbOut, wbEntity)
         
         '▼ 出力先ファイル名
         outputPath = folderOutput & entityFile
         
-        '▼ テンプレートをコピー
-        wbTemplate.SaveCopyAs outputPath
-        
-        'コピーしたものを開く
-        Set wbOut = Workbooks.Open(outputPath)
-        
-        '=====================================
-        '  ★ entity の情報だけを出力する処理
-        '=====================================
-        Call SetEntityInfoToTemplate(wbOut, wbEntity)
-        
-        '▼ 正常終了時のクローズ
-        wbOut.Close SaveChanges:=True
-        wbTemplate.Close SaveChanges:=False
+        '▼ 保存して閉じる
+        wbOut.SaveAs outputPath
+        wbOut.Close SaveChanges:=False
         wbEntity.Close SaveChanges:=False
         
         entityFile = Dir()
     Loop
     
-    MsgBox "entity データのみの出力が完了しました。", vbInformation
+    MsgBox "entity データの出力が完了しました。", vbInformation
     Exit Sub
 
 '────────────────────────────────────────
 ERR_HANDLER:
 '────────────────────────────────────────
+    '▼ エラー情報を最初に保存（On Error Resume Next の前に）
+    Dim errNum As Long
+    Dim errDesc As String
+    Dim errSource As String
+    
+    errNum = Err.Number
+    errDesc = Err.Description
+    errSource = Err.Source
+    
+    '▼ エラー情報を保存した後、エラーを無視してクリーンアップ処理
     On Error Resume Next
     If Not wbOut Is Nothing Then wbOut.Close SaveChanges:=False
-    If Not wbTemplate Is Nothing Then wbTemplate.Close SaveChanges:=False
     If Not wbEntity Is Nothing Then wbEntity.Close SaveChanges:=False
+    On Error GoTo 0
     
+    '▼ 保存したエラー情報を表示
     Dim errMsg As String
     errMsg = "エラーが発生しました。" & vbCrLf & vbCrLf
-    errMsg = errMsg & "エラー番号：" & Err.Number & vbCrLf
-    errMsg = errMsg & "エラー内容：" & Err.Description
+    errMsg = errMsg & "エラー番号：" & errNum & vbCrLf
+    errMsg = errMsg & "エラー内容：" & errDesc
+    If errSource <> "" Then
+        errMsg = errMsg & vbCrLf & "エラー発生元：" & errSource
+    End If
     
     MsgBox errMsg, vbCritical, "エラー"
 
@@ -179,12 +179,12 @@ End Function
 
 
 '========================================================================
-'  entity.xlsx → テンプレートへ出力
+'  entity.xlsx → 新規ワークブックへ出力
 '
-'  出力先：テンプレートの "Entity" シート
+'  出力先：新規ワークブックの最初のシート
 '  出力形式：A列＝日本語名、B列＝値
 '========================================================================
-Public Sub SetEntityInfoToTemplate(wbOut As Workbook, wbEntity As Workbook)
+Public Sub SetEntityInfoToNewWorkbook(wbOut As Workbook, wbEntity As Workbook)
 
     Dim wsEntity As Worksheet
     Dim wsOut As Worksheet
@@ -195,36 +195,12 @@ Public Sub SetEntityInfoToTemplate(wbOut As Workbook, wbEntity As Workbook)
     Dim rowOut As Long: rowOut = 2
     
     Set wsEntity = wbEntity.Sheets(1)
+    Set wsOut = wbOut.Sheets(1)
+    wsOut.Name = "Entity"
     
-    '▼ "Entity" シートの存在確認
-    Dim ws As Worksheet
-    Dim sheetExists As Boolean
-    sheetExists = False
-    
-    For Each ws In wbOut.Sheets
-        If ws.Name = "Entity" Then
-            sheetExists = True
-            Set wsOut = ws
-            Exit For
-        End If
-    Next ws
-    
-    '▼ シートが存在しない場合は新規作成
-    If Not sheetExists Then
-        Set wsOut = wbOut.Sheets.Add
-        wsOut.Name = "Entity"
-    End If
-    
-    '▼ ヘッダー行を設定（既存シートの場合も上書き）
+    '▼ ヘッダー行を設定
     wsOut.Cells(1, 1).Value = "項目名"
     wsOut.Cells(1, 2).Value = "値"
-    
-    '▼ 既存データをクリア（2行目以降）
-    Dim lastRow As Long
-    lastRow = wsOut.Cells(wsOut.Rows.Count, 1).End(xlUp).Row
-    If lastRow > 1 Then
-        wsOut.Range(wsOut.Cells(2, 1), wsOut.Cells(lastRow, 2)).ClearContents
-    End If
     
     Set dic = GetEntityMappingDict()
     
