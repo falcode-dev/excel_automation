@@ -116,6 +116,9 @@ Public Sub メイン処理_メタデータ結合()
             End If
         End If
         
+        '▼ ファイル名から使用できない文字を削除
+        displayName = SanitizeFileName(displayName)
+        
         '=====================================
         '  ★ 30_attribute の処理
         '=====================================
@@ -145,7 +148,28 @@ Public Sub メイン処理_メタデータ結合()
         End If
         
         '▼ 保存して閉じる
+        On Error Resume Next
         wbOut.SaveAs outputPath
+        Dim saveErrNum As Long
+        Dim saveErrDesc As String
+        saveErrNum = Err.Number
+        saveErrDesc = Err.Description
+        Err.Clear
+        On Error GoTo ERR_HANDLER
+        
+        If saveErrNum <> 0 Then
+            Dim saveErrMsg As String
+            saveErrMsg = "ファイル保存時にエラーが発生しました。" & vbCrLf & vbCrLf
+            saveErrMsg = saveErrMsg & "ファイル名: " & displayName & vbCrLf
+            saveErrMsg = saveErrMsg & "パス: " & outputPath & vbCrLf
+            saveErrMsg = saveErrMsg & "エラー番号: " & saveErrNum & vbCrLf
+            saveErrMsg = saveErrMsg & "エラー内容: " & saveErrDesc
+            MsgBox saveErrMsg, vbCritical, "保存エラー"
+            wbOut.Close SaveChanges:=False
+            Set wbOut = Nothing
+            GoTo NEXT_FILE
+        End If
+        
         wbOut.Close SaveChanges:=False
         Set wbOut = Nothing
         
@@ -478,6 +502,48 @@ Private Function GetDisplayNameFromBrowser(wsTable As Worksheet) As String
     Next col
     
     GetDisplayNameFromBrowser = ""
+
+End Function
+
+
+'========================================================================
+'  ファイル名から使用できない文字を削除
+'========================================================================
+Private Function SanitizeFileName(fileName As String) As String
+
+    Dim result As String
+    Dim i As Long
+    Dim char As String
+    Dim invalidChars As String
+    
+    '▼ Windowsで使用できない文字
+    invalidChars = "/\:*?""<>|"
+    
+    result = fileName
+    
+    '▼ 使用できない文字を削除
+    For i = 1 To Len(invalidChars)
+        char = Mid(invalidChars, i, 1)
+        result = Replace(result, char, "_")
+    Next i
+    
+    '▼ 先頭・末尾のスペースとピリオドを削除
+    result = Trim(result)
+    While Right(result, 1) = "." Or Right(result, 1) = " "
+        result = Left(result, Len(result) - 1)
+    Wend
+    
+    '▼ 空文字の場合はデフォルト名を返す
+    If result = "" Then
+        result = "output"
+    End If
+    
+    '▼ ファイル名の長さ制限（255文字）
+    If Len(result) > 255 Then
+        result = Left(result, 255)
+    End If
+    
+    SanitizeFileName = result
 
 End Function
 
