@@ -23,7 +23,7 @@ Public Sub メイン処理_メタデータ結合()
     Dim wbDocument As Workbook
     Dim wbAttribute As Workbook
     
-    Dim displayName As String
+    Dim logicalName As String
     
     On Error GoTo ERR_HANDLER
     
@@ -105,19 +105,19 @@ Public Sub メイン処理_メタデータ結合()
         End If
         
         '▼ LogicalNameを取得（ファイル名生成用）
-        displayName = GetLogicalNameFromBrowser(wsTable)
-        If displayName = "" Then
+        logicalName = GetLogicalNameFromBrowser(wsTable)
+        If logicalName = "" Then
             Dim dotPos As Long
             dotPos = InStrRev(fileName, ".")
             If dotPos > 0 Then
-                displayName = Left(fileName, dotPos - 1)
+                logicalName = Left(fileName, dotPos - 1)
             Else
-                displayName = fileName
+                logicalName = fileName
             End If
         End If
         
         '▼ ファイル名から使用できない文字を削除
-        displayName = SanitizeFileName(displayName)
+        logicalName = SanitizeFileName(logicalName)
         
         '=====================================
         '  ★ 30_attribute の処理
@@ -140,7 +140,7 @@ Public Sub メイン処理_メタデータ結合()
         End If
         
         '▼ 出力ファイル名を生成
-        outputPath = folderOutput & displayName & ".xlsx"
+        outputPath = folderOutput & logicalName & ".xlsx"
         
         '▼ 既存ファイルがある場合は上書き確認（エラー回避のため）
         If Dir(outputPath) <> "" Then
@@ -160,7 +160,7 @@ Public Sub メイン処理_メタデータ結合()
         If saveErrNum <> 0 Then
             Dim saveErrMsg As String
             saveErrMsg = "ファイル保存時にエラーが発生しました。" & vbCrLf & vbCrLf
-            saveErrMsg = saveErrMsg & "ファイル名: " & displayName & vbCrLf
+            saveErrMsg = saveErrMsg & "ファイル名: " & logicalName & vbCrLf
             saveErrMsg = saveErrMsg & "パス: " & outputPath & vbCrLf
             saveErrMsg = saveErrMsg & "エラー番号: " & saveErrNum & vbCrLf
             saveErrMsg = saveErrMsg & "エラー内容: " & saveErrDesc
