@@ -102,6 +102,10 @@ Public Sub メイン処理_メタデータ結合()
             Call SetBrowserDataToTable(wbBrowser, wsTable)
             wbBrowser.Close SaveChanges:=False
             Set wbBrowser = Nothing
+            
+            '▼ Excelの内部処理を完了させる
+            Application.Calculate
+            DoEvents
         End If
         
         '▼ LogicalNameを取得（ファイル名生成用）
@@ -490,16 +494,44 @@ Private Function GetLogicalNameFromBrowser(wsTable As Worksheet) As String
     Dim lastCol As Long
     Dim col As Long
     Dim colName As String
+    Dim retryCount As Long
+    Dim maxRetries As Long
     
-    lastCol = wsTable.Cells(1, wsTable.Columns.Count).End(xlToLeft).Column
+    maxRetries = 3
     
-    For col = 1 To lastCol
-        colName = Trim(wsTable.Cells(1, col).Value)
-        If LCase(colName) = "logicalname" Then
-            GetLogicalNameFromBrowser = Trim(wsTable.Cells(2, col).Value)
-            Exit Function
+    '▼ データが正しく書き込まれるまで最大3回再試行
+    For retryCount = 1 To maxRetries
+        '▼ Excelの処理を完了させる
+        Application.Calculate
+        DoEvents
+        
+        '▼ 列数を取得
+        lastCol = wsTable.Cells(1, wsTable.Columns.Count).End(xlToLeft).Column
+        
+        '▼ データが書き込まれているか確認（列数が1以上、かつA1セルに値がある）
+        If lastCol > 0 And Trim(wsTable.Cells(1, 1).Value) <> "" Then
+            '▼ LogicalName列を探す
+            For col = 1 To lastCol
+                colName = Trim(wsTable.Cells(1, col).Value)
+                If LCase(colName) = "logicalname" Then
+                    Dim logicalNameValue As String
+                    logicalNameValue = Trim(wsTable.Cells(2, col).Value)
+                    If logicalNameValue <> "" Then
+                        GetLogicalNameFromBrowser = logicalNameValue
+                        Exit Function
+                    End If
+                End If
+            Next col
         End If
-    Next col
+        
+        '▼ データがまだ書き込まれていない場合は少し待つ
+        If retryCount < maxRetries Then
+            Dim waitCount As Long
+            For waitCount = 1 To 10
+                DoEvents
+            Next waitCount
+        End If
+    Next retryCount
     
     GetLogicalNameFromBrowser = ""
 
