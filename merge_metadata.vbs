@@ -351,7 +351,7 @@ Private Sub SetAttributeDataToForm(wbAttribute As Workbook, wsForm As Worksheet)
     '▼ 追加列のヘッダーを出力（既存の列の後ろに）
     Dim additionalColsHeader As Variant
     additionalColsHeader = Array("最大値", "最小値", "小数点以下表示桁数", "通貨の精度", _
-                                 "タイムゾーン", "選択肢", "規定値", "関連テーブル", "リレーションシップ名列")
+                                 "タイムゾーン", "選択肢", "規定値", "関連テーブル", "リレーションシップ名列", "文字数列")
     Dim j As Long
     For j = LBound(additionalColsHeader) To UBound(additionalColsHeader)
         wsForm.Cells(1, outputCol).Value = additionalColsHeader(j)
@@ -397,7 +397,7 @@ Private Sub SetAttributeDataToForm(wbAttribute As Workbook, wsForm As Worksheet)
         '▼ 追加列を出力（空のセルとして）
         Dim additionalCols As Variant
         additionalCols = Array("最大値", "最小値", "小数点以下表示桁数", "通貨の精度", _
-                                 "タイムゾーン", "選択肢", "規定値", "関連テーブル", "リレーションシップ名列")
+                                 "タイムゾーン", "選択肢", "規定値", "関連テーブル", "リレーションシップ名列", "文字数列")
         For j = LBound(additionalCols) To UBound(additionalCols)
             wsForm.Cells(outputRow, outputCol).Value = ""
             outputCol = outputCol + 1
@@ -511,6 +511,9 @@ Private Sub SetDocumentDataToForm(wbDocument As Workbook, wsForm As Worksheet)
                 
                 '▼ 一致した行にデータを追加
                 nextCol = lastCol + 1
+                Dim additionalDataValue As String
+                additionalDataValue = ""
+                
                 For i = LBound(targetCols) To UBound(targetCols)
                     colName = targetCols(i)
                     Dim docCellValue As String
@@ -521,6 +524,11 @@ Private Sub SetDocumentDataToForm(wbDocument As Workbook, wsForm As Worksheet)
                         docCellValue = ""
                     End If
                     
+                    '▼ Additional dataを保存
+                    If colName = "Additional data" Then
+                        additionalDataValue = docCellValue
+                    End If
+                    
                     '▼ Typeの変換処理を適用
                     If colName = "Type" Then
                         docCellValue = ConvertFormType(docCellValue)
@@ -529,6 +537,11 @@ Private Sub SetDocumentDataToForm(wbDocument As Workbook, wsForm As Worksheet)
                     wsForm.Cells(formRow, nextCol).Value = docCellValue
                     nextCol = nextCol + 1
                 Next i
+                
+                '▼ Additional dataのテキストを解析して対応する列に値をセット
+                If additionalDataValue <> "" Then
+                    Call ParseAdditionalData(wsForm, formRow, additionalDataValue, formColIndex)
+                End If
                 
                 Exit For
             End If
@@ -734,6 +747,136 @@ Private Function ConvertFormType(val As String) As String
         Case "Rollup": ConvertFormType = "ロールアップ列"
         Case Else: ConvertFormType = val
     End Select
+
+End Function
+
+
+'========================================================================
+'  Additional dataのテキストを解析して対応する列に値をセット
+'========================================================================
+Private Sub ParseAdditionalData(wsForm As Worksheet, formRow As Long, additionalData As String, formColIndex As Object)
+    
+    Dim lines As Variant
+    Dim line As Variant
+    Dim lineText As String
+    Dim colonPos As Long
+    Dim valueText As String
+    Dim colNum As Long
+    
+    '▼ 改行で分割（複数行の場合に対応）
+    lines = Split(additionalData, vbCrLf)
+    If UBound(lines) < 0 Then
+        lines = Split(additionalData, vbLf)
+    End If
+    If UBound(lines) < 0 Then
+        lines = Split(additionalData, vbCr)
+    End If
+    
+    For Each line In lines
+        lineText = Trim(CStr(line))
+        If lineText = "" Then GoTo NEXT_LINE
+        
+        '▼ Targets:が含まれている場合
+        If InStr(1, lineText, "Targets:", vbTextCompare) > 0 Then
+            colonPos = InStr(1, lineText, "Targets:", vbTextCompare)
+            valueText = Trim(Mid(lineText, colonPos + Len("Targets:")))
+            If formColIndex.Exists("関連テーブル") Then
+                colNum = formColIndex("関連テーブル")
+                wsForm.Cells(formRow, colNum).Value = valueText
+            End If
+        End If
+        
+        '▼ Format:が含まれている場合（Format: Textは除外）
+        If InStr(1, lineText, "Format:", vbTextCompare) > 0 And _
+           InStr(1, lineText, "Format: Text", vbTextCompare) = 0 Then
+            colonPos = InStr(1, lineText, "Format:", vbTextCompare)
+            valueText = Trim(Mid(lineText, colonPos + Len("Format:")))
+            If formColIndex.Exists("タイムゾーン") Then
+                colNum = formColIndex("タイムゾーン")
+                wsForm.Cells(formRow, colNum).Value = valueText
+            End If
+        End If
+        
+        '▼ States:が含まれている場合
+        If InStr(1, lineText, "States:", vbTextCompare) > 0 Then
+            colonPos = InStr(1, lineText, "States:", vbTextCompare)
+            valueText = Trim(Mid(lineText, colonPos + Len("States:")))
+            If formColIndex.Exists("選択肢") Then
+                colNum = formColIndex("選択肢")
+                wsForm.Cells(formRow, colNum).Value = valueText
+            End If
+        End If
+        
+        '▼ Format: Textが含まれている場合、Max length:以降の数値を取得
+        If InStr(1, lineText, "Format: Text", vbTextCompare) > 0 Then
+            '▼ 同じ行または次の行にMax length:があるか確認
+            Dim maxLengthPos As Long
+            maxLengthPos = InStr(1, lineText, "Max length:", vbTextCompare)
+            If maxLengthPos > 0 Then
+                Dim maxLengthText As String
+                maxLengthText = Trim(Mid(lineText, maxLengthPos + Len("Max length:")))
+                '▼ 数値部分を抽出
+                Dim numValue As String
+                numValue = ExtractNumber(maxLengthText)
+                '▼ 文字数列の列にセット
+                If formColIndex.Exists("文字数列") Then
+                    colNum = formColIndex("文字数列")
+                    wsForm.Cells(formRow, colNum).Value = numValue
+                End If
+            End If
+        End If
+        
+        '▼ Minimum value:が含まれている場合
+        If InStr(1, lineText, "Minimum value:", vbTextCompare) > 0 Then
+            colonPos = InStr(1, lineText, "Minimum value:", vbTextCompare)
+            valueText = Trim(Mid(lineText, colonPos + Len("Minimum value:")))
+            If formColIndex.Exists("最小値") Then
+                colNum = formColIndex("最小値")
+                wsForm.Cells(formRow, colNum).Value = valueText
+            End If
+        End If
+        
+        '▼ Maximum value:が含まれている場合
+        If InStr(1, lineText, "Maximum value:", vbTextCompare) > 0 Then
+            colonPos = InStr(1, lineText, "Maximum value:", vbTextCompare)
+            valueText = Trim(Mid(lineText, colonPos + Len("Maximum value:")))
+            If formColIndex.Exists("最大値") Then
+                colNum = formColIndex("最大値")
+                wsForm.Cells(formRow, colNum).Value = valueText
+            End If
+        End If
+        
+NEXT_LINE:
+    Next line
+
+End Sub
+
+
+'========================================================================
+'  テキストから数値を抽出
+'========================================================================
+Private Function ExtractNumber(text As String) As String
+    
+    Dim result As String
+    Dim i As Long
+    Dim char As String
+    Dim foundDigit As Boolean
+    
+    result = ""
+    foundDigit = False
+    
+    For i = 1 To Len(text)
+        char = Mid(text, i, 1)
+        If IsNumeric(char) Then
+            result = result & char
+            foundDigit = True
+        ElseIf foundDigit Then
+            '▼ 数値の後に非数値文字が来たら終了
+            Exit For
+        End If
+    Next i
+    
+    ExtractNumber = result
 
 End Function
 
