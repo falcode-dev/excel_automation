@@ -104,8 +104,8 @@ Public Sub メイン処理_メタデータ結合()
             Set wbBrowser = Nothing
         End If
         
-        '▼ DisplayNameを取得（ファイル名生成用）
-        displayName = GetDisplayNameFromBrowser(wsTable)
+        '▼ LogicalNameを取得（ファイル名生成用）
+        displayName = GetLogicalNameFromBrowser(wsTable)
         If displayName = "" Then
             Dim dotPos As Long
             dotPos = InStrRev(fileName, ".")
@@ -483,9 +483,9 @@ End Sub
 
 
 '========================================================================
-'  browser から DisplayName を取得
+'  browser から LogicalName を取得
 '========================================================================
-Private Function GetDisplayNameFromBrowser(wsTable As Worksheet) As String
+Private Function GetLogicalNameFromBrowser(wsTable As Worksheet) As String
 
     Dim lastCol As Long
     Dim col As Long
@@ -495,13 +495,13 @@ Private Function GetDisplayNameFromBrowser(wsTable As Worksheet) As String
     
     For col = 1 To lastCol
         colName = Trim(wsTable.Cells(1, col).Value)
-        If LCase(colName) = "displayname" Then
-            GetDisplayNameFromBrowser = Trim(wsTable.Cells(2, col).Value)
+        If LCase(colName) = "logicalname" Then
+            GetLogicalNameFromBrowser = Trim(wsTable.Cells(2, col).Value)
             Exit Function
         End If
     Next col
     
-    GetDisplayNameFromBrowser = ""
+    GetLogicalNameFromBrowser = ""
 
 End Function
 
