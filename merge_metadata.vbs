@@ -72,32 +72,27 @@ Public Sub メイン処理_メタデータ結合()
         Set wbOut = Workbooks.Add
         Application.DisplayAlerts = False
         
-        '▼ デフォルトシートの名前を変更
+        '▼ 必要なシートを作成
         Dim wsTable As Worksheet
         Dim wsForm As Worksheet
+        Set wsTable = wbOut.Sheets.Add
+        wsTable.Name = "テーブル"
+        Set wsForm = wbOut.Sheets.Add
+        wsForm.Name = "フォーム"
         
-        '▼ 最初のシートを「テーブル」に変更
-        If wbOut.Sheets.Count >= 1 Then
-            Set wsTable = wbOut.Sheets(1)
-            wsTable.Name = "テーブル"
-        Else
-            Set wsTable = wbOut.Sheets.Add
-            wsTable.Name = "テーブル"
-        End If
+        '▼ デフォルトシートを削除（「テーブル」と「フォーム」以外）
+        '▼ 後ろから削除することでインデックスのずれを防ぐ
+        Dim i As Long
+        Dim sheetCount As Long
+        sheetCount = wbOut.Sheets.Count
         
-        '▼ 2番目のシートを「フォーム」に変更（存在しない場合は作成）
-        If wbOut.Sheets.Count >= 2 Then
-            Set wsForm = wbOut.Sheets(2)
-            wsForm.Name = "フォーム"
-        Else
-            Set wsForm = wbOut.Sheets.Add
-            wsForm.Name = "フォーム"
-        End If
-        
-        '▼ 3つ目以降のシートがあれば削除
-        While wbOut.Sheets.Count > 2
-            wbOut.Sheets(3).Delete
-        Wend
+        For i = sheetCount To 1 Step -1
+            Dim ws As Worksheet
+            Set ws = wbOut.Sheets(i)
+            If ws.Name <> "テーブル" And ws.Name <> "フォーム" Then
+                ws.Delete
+            End If
+        Next i
         
         '=====================================
         '  ★ 10_metadata_browser の処理
