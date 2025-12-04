@@ -238,6 +238,13 @@ Private Function ConvertEntityValue(key As String, val As String) As String
                 ConvertEntityValue = "あり"
             End If
         
+        Case "EntityColor"
+            If val = "0" Or val = 0 Then
+                ConvertEntityValue = "-"
+            Else
+                ConvertEntityValue = val
+            End If
+        
         Case Else
             If LCase(val) = "true" Then
                 ConvertEntityValue = "ON"
@@ -544,28 +551,28 @@ Public Sub SetAttributeInfoToTemplate(wbOut As Workbook, wbAttribute As Workbook
     
     For row = 2 To lastRow
         'E列: SchemaName
-        If colIndex.Exists("SchemaName") Then
+        If colIndex.Exists("Schema Name") Then
             Set cell = wsField.Cells(fieldRow, 5)  'E列
             cell.Value = Trim(wsAttribute.Cells(row, colIndex("SchemaName")).Value)
             cell.Font.Color = RGB(255, 0, 0)
         End If
         
         'F列: DisplayName
-        If colIndex.Exists("DisplayName") Then
+        If colIndex.Exists("Display Name") Then
             Set cell = wsField.Cells(fieldRow, 6)  'F列
             cell.Value = Trim(wsAttribute.Cells(row, colIndex("DisplayName")).Value)
             cell.Font.Color = RGB(255, 0, 0)
         End If
         
         'G列: LogicalName
-        If colIndex.Exists("LogicalName") Then
+        If colIndex.Exists("Logical Name") Then
             Set cell = wsField.Cells(fieldRow, 7)  'G列
             cell.Value = Trim(wsAttribute.Cells(row, colIndex("LogicalName")).Value)
             cell.Font.Color = RGB(255, 0, 0)
         End If
         
         'H列: IsCustomAttribute
-        If colIndex.Exists("IsCustomAttribute") Then
+        If colIndex.Exists("Custom Attribute") Then
             Set cell = wsField.Cells(fieldRow, 8)  'H列
             cell.Value = ConvertAttributeValue("IsCustomAttribute", Trim(wsAttribute.Cells(row, colIndex("IsCustomAttribute")).Value))
             cell.Font.Color = RGB(255, 0, 0)
