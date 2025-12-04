@@ -348,6 +348,16 @@ Private Sub SetAttributeDataToForm(wbAttribute As Workbook, wsForm As Worksheet)
         outputCol = outputCol + 1
     Next i
     
+    '▼ 追加列のヘッダーを出力（既存の列の後ろに）
+    Dim additionalColsHeader As Variant
+    additionalColsHeader = Array("最大値", "最小値", "小数点以下表示桁数", "通貨の精度", _
+                                 "タイムゾーン", "選択肢", "規定値", "関連テーブル", "リレーションシップ名列")
+    Dim j As Long
+    For j = LBound(additionalColsHeader) To UBound(additionalColsHeader)
+        wsForm.Cells(1, outputCol).Value = additionalColsHeader(j)
+        outputCol = outputCol + 1
+    Next j
+    
     '▼ データ行を出力（2行目から）
     Dim outputRow As Long
     outputRow = 1  'ヘッダー行の次の行から開始
@@ -383,6 +393,15 @@ Private Sub SetAttributeDataToForm(wbAttribute As Workbook, wsForm As Worksheet)
             wsForm.Cells(outputRow, outputCol).Value = cellValue
             outputCol = outputCol + 1
         Next i
+        
+        '▼ 追加列を出力（空のセルとして）
+        Dim additionalCols As Variant
+        additionalCols = Array("最大値", "最小値", "小数点以下表示桁数", "通貨の精度", _
+                                 "タイムゾーン", "選択肢", "規定値", "関連テーブル", "リレーションシップ名列")
+        For j = LBound(additionalCols) To UBound(additionalCols)
+            wsForm.Cells(outputRow, outputCol).Value = ""
+            outputCol = outputCol + 1
+        Next j
         
 NEXT_ATTRIBUTE_ROW:
     Next row
@@ -689,7 +708,7 @@ Private Function ConvertFormValue(key As String, val As String) As String
         Case "RequiredLevel"
             '▼ None → -、SystemRequired → 必須項目
             Select Case val
-                Case "None": ConvertFormValue = "-"
+                Case "None": ConvertFormValue = "任意"
                 Case "SystemRequired": ConvertFormValue = "必須項目"
                 Case Else: ConvertFormValue = val
             End Select
