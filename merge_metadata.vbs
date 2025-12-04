@@ -49,14 +49,8 @@ Public Sub メイン処理_メタデータ結合()
     End If
     If fileName = "" Then Err.Raise 104, , "10_metadata_browser に処理対象ファイルがありません。"
     
-    '▼ 無限ループ防止：最大処理回数を設定
-    Dim maxIterations As Long
-    Dim iterationCount As Long
-    maxIterations = 1000
-    iterationCount = 0
-    
-    Do While fileName <> "" And iterationCount < maxIterations
-        iterationCount = iterationCount + 1
+    '▼ ファイル処理ループ
+    Do While fileName <> ""
         
         browserPath = folderBrowser & fileName
         documentPath = folderDocument & fileName
@@ -176,17 +170,14 @@ Public Sub メイン処理_メタデータ結合()
         wbOut.Close SaveChanges:=False
         Set wbOut = Nothing
         
-        Application.DisplayAlerts = True
-        
 NEXT_FILE:
         fileName = Dir()
     Loop
     
-    If iterationCount >= maxIterations Then
-        MsgBox "警告: 最大処理回数(" & maxIterations & ")に達しました。処理を中断しました。", vbExclamation
-    Else
-        MsgBox "メタデータの結合が完了しました。", vbInformation
-    End If
+    '▼ ループ終了後にアラートを有効化
+    Application.DisplayAlerts = True
+    
+    MsgBox "メタデータの結合が完了しました。", vbInformation
     
     Exit Sub
 
