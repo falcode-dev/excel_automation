@@ -756,100 +756,180 @@ End Function
 '========================================================================
 Private Sub ParseAdditionalData(wsForm As Worksheet, formRow As Long, additionalData As String, formColIndex As Object)
     
-    Dim lines As Variant
-    Dim line As Variant
-    Dim lineText As String
-    Dim colonPos As Long
+    Dim keywordPos As Long
     Dim valueText As String
     Dim colNum As Long
+    Dim nextKeywordPos As Long
+    Dim valueStart As Long
+    Dim valueEnd As Long
     
-    '▼ 改行で分割（複数行の場合に対応）
-    lines = Split(additionalData, vbCrLf)
-    If UBound(lines) < 0 Then
-        lines = Split(additionalData, vbLf)
-    End If
-    If UBound(lines) < 0 Then
-        lines = Split(additionalData, vbCr)
-    End If
+    '▼ 全体のテキストから各キーワードを探して値を取得
     
-    For Each line In lines
-        lineText = Trim(CStr(line))
-        If lineText = "" Then GoTo NEXT_LINE
-        
-        '▼ Targets:が含まれている場合
-        If InStr(1, lineText, "Targets:", vbTextCompare) > 0 Then
-            colonPos = InStr(1, lineText, "Targets:", vbTextCompare)
-            valueText = Trim(Mid(lineText, colonPos + Len("Targets:")))
-            If formColIndex.Exists("関連テーブル") Then
-                colNum = formColIndex("関連テーブル")
-                wsForm.Cells(formRow, colNum).Value = valueText
-            End If
+    '▼ Targets:が含まれている場合
+    keywordPos = InStr(1, additionalData, "Targets:", vbTextCompare)
+    If keywordPos > 0 Then
+        valueStart = keywordPos + Len("Targets:")
+        '▼ 次のキーワードの位置を探す
+        nextKeywordPos = FindNextKeyword(additionalData, valueStart)
+        If nextKeywordPos > 0 Then
+            valueText = Trim(Mid(additionalData, valueStart, nextKeywordPos - valueStart))
+        Else
+            valueText = Trim(Mid(additionalData, valueStart))
         End If
-        
-        '▼ Format:が含まれている場合（Format: Textは除外）
-        If InStr(1, lineText, "Format:", vbTextCompare) > 0 And _
-           InStr(1, lineText, "Format: Text", vbTextCompare) = 0 Then
-            colonPos = InStr(1, lineText, "Format:", vbTextCompare)
-            valueText = Trim(Mid(lineText, colonPos + Len("Format:")))
+        '▼ 改行をスペースに置換
+        valueText = Replace(valueText, vbCrLf, " ")
+        valueText = Replace(valueText, vbLf, " ")
+        valueText = Replace(valueText, vbCr, " ")
+        valueText = Trim(valueText)
+        If formColIndex.Exists("関連テーブル") Then
+            colNum = formColIndex("関連テーブル")
+            wsForm.Cells(formRow, colNum).Value = valueText
+        End If
+    End If
+    
+    '▼ Format:が含まれている場合（Format: Textは除外）
+    keywordPos = InStr(1, additionalData, "Format:", vbTextCompare)
+    If keywordPos > 0 Then
+        '▼ Format: Textの場合は除外
+        Dim checkText As String
+        checkText = Mid(additionalData, keywordPos, Len("Format: Text"))
+        If LCase(checkText) <> LCase("Format: Text") Then
+            '▼ Format: Textではない場合のみ処理
+            valueStart = keywordPos + Len("Format:")
+            nextKeywordPos = FindNextKeyword(additionalData, valueStart)
+            If nextKeywordPos > 0 Then
+                valueText = Trim(Mid(additionalData, valueStart, nextKeywordPos - valueStart))
+            Else
+                valueText = Trim(Mid(additionalData, valueStart))
+            End If
+            '▼ 改行をスペースに置換
+            valueText = Replace(valueText, vbCrLf, " ")
+            valueText = Replace(valueText, vbLf, " ")
+            valueText = Replace(valueText, vbCr, " ")
+            valueText = Trim(valueText)
             If formColIndex.Exists("タイムゾーン") Then
                 colNum = formColIndex("タイムゾーン")
                 wsForm.Cells(formRow, colNum).Value = valueText
             End If
         End If
-        
-        '▼ States:が含まれている場合
-        If InStr(1, lineText, "States:", vbTextCompare) > 0 Then
-            colonPos = InStr(1, lineText, "States:", vbTextCompare)
-            valueText = Trim(Mid(lineText, colonPos + Len("States:")))
-            If formColIndex.Exists("選択肢") Then
-                colNum = formColIndex("選択肢")
-                wsForm.Cells(formRow, colNum).Value = valueText
+    End If
+    
+    '▼ States:が含まれている場合
+    keywordPos = InStr(1, additionalData, "States:", vbTextCompare)
+    If keywordPos > 0 Then
+        valueStart = keywordPos + Len("States:")
+        nextKeywordPos = FindNextKeyword(additionalData, valueStart)
+        If nextKeywordPos > 0 Then
+            valueText = Trim(Mid(additionalData, valueStart, nextKeywordPos - valueStart))
+        Else
+            valueText = Trim(Mid(additionalData, valueStart))
+        End If
+        '▼ 改行をスペースに置換
+        valueText = Replace(valueText, vbCrLf, " ")
+        valueText = Replace(valueText, vbLf, " ")
+        valueText = Replace(valueText, vbCr, " ")
+        valueText = Trim(valueText)
+        If formColIndex.Exists("選択肢") Then
+            colNum = formColIndex("選択肢")
+            wsForm.Cells(formRow, colNum).Value = valueText
+        End If
+    End If
+    
+    '▼ Format: Textが含まれている場合、Max length:以降の数値を取得
+    keywordPos = InStr(1, additionalData, "Format: Text", vbTextCompare)
+    If keywordPos > 0 Then
+        Dim maxLengthPos As Long
+        maxLengthPos = InStr(keywordPos, additionalData, "Max length:", vbTextCompare)
+        If maxLengthPos > 0 Then
+            valueStart = maxLengthPos + Len("Max length:")
+            nextKeywordPos = FindNextKeyword(additionalData, valueStart)
+            Dim maxLengthText As String
+            If nextKeywordPos > 0 Then
+                maxLengthText = Trim(Mid(additionalData, valueStart, nextKeywordPos - valueStart))
+            Else
+                maxLengthText = Trim(Mid(additionalData, valueStart))
+            End If
+            '▼ 数値部分を抽出
+            Dim numValue As String
+            numValue = ExtractNumber(maxLengthText)
+            '▼ 文字数列の列にセット
+            If formColIndex.Exists("文字数列") Then
+                colNum = formColIndex("文字数列")
+                wsForm.Cells(formRow, colNum).Value = numValue
             End If
         End If
-        
-        '▼ Format: Textが含まれている場合、Max length:以降の数値を取得
-        If InStr(1, lineText, "Format: Text", vbTextCompare) > 0 Then
-            '▼ 同じ行または次の行にMax length:があるか確認
-            Dim maxLengthPos As Long
-            maxLengthPos = InStr(1, lineText, "Max length:", vbTextCompare)
-            If maxLengthPos > 0 Then
-                Dim maxLengthText As String
-                maxLengthText = Trim(Mid(lineText, maxLengthPos + Len("Max length:")))
-                '▼ 数値部分を抽出
-                Dim numValue As String
-                numValue = ExtractNumber(maxLengthText)
-                '▼ 文字数列の列にセット
-                If formColIndex.Exists("文字数列") Then
-                    colNum = formColIndex("文字数列")
-                    wsForm.Cells(formRow, colNum).Value = numValue
-                End If
-            End If
+    End If
+    
+    '▼ Minimum value:が含まれている場合
+    keywordPos = InStr(1, additionalData, "Minimum value:", vbTextCompare)
+    If keywordPos > 0 Then
+        valueStart = keywordPos + Len("Minimum value:")
+        nextKeywordPos = FindNextKeyword(additionalData, valueStart)
+        If nextKeywordPos > 0 Then
+            valueText = Trim(Mid(additionalData, valueStart, nextKeywordPos - valueStart))
+        Else
+            valueText = Trim(Mid(additionalData, valueStart))
         End If
-        
-        '▼ Minimum value:が含まれている場合
-        If InStr(1, lineText, "Minimum value:", vbTextCompare) > 0 Then
-            colonPos = InStr(1, lineText, "Minimum value:", vbTextCompare)
-            valueText = Trim(Mid(lineText, colonPos + Len("Minimum value:")))
-            If formColIndex.Exists("最小値") Then
-                colNum = formColIndex("最小値")
-                wsForm.Cells(formRow, colNum).Value = valueText
-            End If
+        '▼ 改行をスペースに置換
+        valueText = Replace(valueText, vbCrLf, " ")
+        valueText = Replace(valueText, vbLf, " ")
+        valueText = Replace(valueText, vbCr, " ")
+        valueText = Trim(valueText)
+        If formColIndex.Exists("最小値") Then
+            colNum = formColIndex("最小値")
+            wsForm.Cells(formRow, colNum).Value = valueText
         End If
-        
-        '▼ Maximum value:が含まれている場合
-        If InStr(1, lineText, "Maximum value:", vbTextCompare) > 0 Then
-            colonPos = InStr(1, lineText, "Maximum value:", vbTextCompare)
-            valueText = Trim(Mid(lineText, colonPos + Len("Maximum value:")))
-            If formColIndex.Exists("最大値") Then
-                colNum = formColIndex("最大値")
-                wsForm.Cells(formRow, colNum).Value = valueText
-            End If
+    End If
+    
+    '▼ Maximum value:が含まれている場合
+    keywordPos = InStr(1, additionalData, "Maximum value:", vbTextCompare)
+    If keywordPos > 0 Then
+        valueStart = keywordPos + Len("Maximum value:")
+        nextKeywordPos = FindNextKeyword(additionalData, valueStart)
+        If nextKeywordPos > 0 Then
+            valueText = Trim(Mid(additionalData, valueStart, nextKeywordPos - valueStart))
+        Else
+            valueText = Trim(Mid(additionalData, valueStart))
         End If
-        
-NEXT_LINE:
-    Next line
+        '▼ 改行をスペースに置換
+        valueText = Replace(valueText, vbCrLf, " ")
+        valueText = Replace(valueText, vbLf, " ")
+        valueText = Replace(valueText, vbCr, " ")
+        valueText = Trim(valueText)
+        If formColIndex.Exists("最大値") Then
+            colNum = formColIndex("最大値")
+            wsForm.Cells(formRow, colNum).Value = valueText
+        End If
+    End If
 
 End Sub
+
+
+'========================================================================
+'  次のキーワードの位置を探す
+'========================================================================
+Private Function FindNextKeyword(text As String, startPos As Long) As Long
+    
+    Dim keywords As Variant
+    Dim keyword As Variant
+    Dim pos As Long
+    Dim minPos As Long
+    
+    keywords = Array("Targets:", "Format:", "States:", "Max length:", "Minimum value:", "Maximum value:")
+    minPos = 0
+    
+    For Each keyword In keywords
+        pos = InStr(startPos, text, keyword, vbTextCompare)
+        If pos > 0 Then
+            If minPos = 0 Or pos < minPos Then
+                minPos = pos
+            End If
+        End If
+    Next keyword
+    
+    FindNextKeyword = minPos
+
+End Function
 
 
 '========================================================================
