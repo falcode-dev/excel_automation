@@ -174,8 +174,10 @@ NEXT_FILE:
         fileName = Dir()
     Loop
     
-    '▼ ループ終了後にアラートを有効化
+    '▼ ループ終了後の処理
+    On Error Resume Next
     Application.DisplayAlerts = True
+    On Error GoTo ERR_HANDLER
     
     MsgBox "メタデータの結合が完了しました。", vbInformation
     
@@ -275,12 +277,17 @@ Private Sub SetBrowserDataToTable(wbBrowser As Workbook, wsTable As Worksheet)
         outputCol = 1
         For i = LBound(targetCols) To UBound(targetCols)
             colName = targetCols(i)
+            Dim cellValue As String
             If colIndex.Exists(colName) Then
                 colNum = colIndex(colName)
-                wsTable.Cells(row, outputCol).Value = Trim(wsBrowser.Cells(row, colNum).Value)
+                cellValue = Trim(wsBrowser.Cells(row, colNum).Value)
             Else
-                wsTable.Cells(row, outputCol).Value = ""
+                cellValue = ""
             End If
+            
+            '▼ 値の変換処理を適用
+            cellValue = ConvertTableValue(colName, cellValue)
+            wsTable.Cells(row, outputCol).Value = cellValue
             outputCol = outputCol + 1
         Next i
     Next row
@@ -570,6 +577,58 @@ Private Function SanitizeFileName(fileName As String) As String
     End If
     
     SanitizeFileName = result
+
+End Function
+
+
+'========================================================================
+'  テーブル値の変換（True/False・所有権・種類・画像）
+'========================================================================
+Private Function ConvertTableValue(key As String, val As String) As String
+    
+    val = Trim(val)
+    
+    Select Case key
+
+        Case "TableType"
+            Select Case val
+                Case "Standard": ConvertTableValue = "標準"
+                Case "Activity": ConvertTableValue = "活動"
+                Case "Virtual": ConvertTableValue = "仮想"
+                Case Else: ConvertTableValue = val
+            End Select
+        
+        Case "OwnershipType"
+            Select Case val
+                Case "UserOwned": ConvertTableValue = "ユーザーまたはチーム"
+                Case "OrganizationOwned": ConvertTableValue = "組織"
+                Case Else: ConvertTableValue = val
+            End Select
+        
+        Case "Primarylmage Attribute", "PrimaryImageAttribute"
+            If val = "" Then
+                ConvertTableValue = "なし"
+            Else
+                ConvertTableValue = "あり"
+            End If
+        
+        Case "EntityColor"
+            If val = "0" Or val = 0 Then
+                ConvertTableValue = "-"
+            Else
+                ConvertTableValue = val
+            End If
+        
+        Case Else
+            '▼ True/Falseの値をチェック/- に変換
+            If LCase(val) = "true" Then
+                ConvertTableValue = ChrW(10003)  'チェックマーク（✓）
+            ElseIf LCase(val) = "false" Or val = "" Then
+                ConvertTableValue = "-"
+            Else
+                ConvertTableValue = val
+            End If
+    End Select
 
 End Function
 
