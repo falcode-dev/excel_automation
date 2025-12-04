@@ -102,13 +102,12 @@ Public Sub メイン処理_メタデータ結合()
             Call SetBrowserDataToTable(wbBrowser, wsTable)
             wbBrowser.Close SaveChanges:=False
             Set wbBrowser = Nothing
-            
-            '▼ Excelの内部処理を完了させる
-            Application.Calculate
-            DoEvents
         End If
         
         '▼ LogicalNameを取得（ファイル名生成用）
+        '▼ SetBrowserDataToTable の後に確実にデータが書き込まれた状態で読み取る
+        Application.Calculate
+        DoEvents
         logicalName = GetLogicalNameFromBrowser(wsTable)
         If logicalName = "" Then
             Dim dotPos As Long
@@ -294,6 +293,10 @@ Private Sub SetBrowserDataToTable(wbBrowser As Workbook, wsTable As Worksheet)
             outputCol = outputCol + 1
         Next i
     Next row
+    
+    '▼ データの書き込みを確実に完了させる
+    Application.Calculate
+    DoEvents
 
 End Sub
 
