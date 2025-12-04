@@ -349,18 +349,42 @@ Private Sub SetAttributeDataToForm(wbAttribute As Workbook, wsForm As Worksheet)
     Next i
     
     '▼ データ行を出力（2行目から）
+    Dim outputRow As Long
+    outputRow = 1  'ヘッダー行の次の行から開始
+    
     For row = 2 To lastRow
+        '▼ DisplayNameを取得してN/Aチェック
+        Dim displayNameValue As String
+        If colIndex.Exists("DisplayName") Then
+            displayNameValue = Trim(wsAttribute.Cells(row, colIndex("DisplayName")).Value)
+        Else
+            displayNameValue = ""
+        End If
+        
+        '▼ DisplayNameがN/Aの行はスキップ
+        If LCase(displayNameValue) = "n/a" Then
+            GoTo NEXT_ATTRIBUTE_ROW
+        End If
+        
+        outputRow = outputRow + 1
         outputCol = 1
         For i = LBound(targetCols) To UBound(targetCols)
             colName = targetCols(i)
+            Dim cellValue As String
             If colIndex.Exists(colName) Then
                 colNum = colIndex(colName)
-                wsForm.Cells(row, outputCol).Value = Trim(wsAttribute.Cells(row, colNum).Value)
+                cellValue = Trim(wsAttribute.Cells(row, colNum).Value)
             Else
-                wsForm.Cells(row, outputCol).Value = ""
+                cellValue = ""
             End If
+            
+            '▼ 値の変換処理を適用
+            cellValue = ConvertFormValue(colName, cellValue)
+            wsForm.Cells(outputRow, outputCol).Value = cellValue
             outputCol = outputCol + 1
         Next i
+        
+NEXT_ATTRIBUTE_ROW:
     Next row
 
 End Sub
@@ -470,10 +494,20 @@ Private Sub SetDocumentDataToForm(wbDocument As Workbook, wsForm As Worksheet)
                 nextCol = lastCol + 1
                 For i = LBound(targetCols) To UBound(targetCols)
                     colName = targetCols(i)
+                    Dim docCellValue As String
                     If colIndex.Exists(colName) Then
                         colNum = colIndex(colName)
-                        wsForm.Cells(formRow, nextCol).Value = Trim(wsDocument.Cells(row, colNum).Value)
+                        docCellValue = Trim(wsDocument.Cells(row, colNum).Value)
+                    Else
+                        docCellValue = ""
                     End If
+                    
+                    '▼ Typeの変換処理を適用
+                    If colName = "Type" Then
+                        docCellValue = ConvertFormType(docCellValue)
+                    End If
+                    
+                    wsForm.Cells(formRow, nextCol).Value = docCellValue
                     nextCol = nextCol + 1
                 Next i
                 
@@ -628,6 +662,58 @@ Private Function ConvertTableValue(key As String, val As String) As String
             Else
                 ConvertTableValue = val
             End If
+    End Select
+
+End Function
+
+
+'========================================================================
+'  フォーム値の変換（IsPrimaryName・RequiredLevel）
+'========================================================================
+Private Function ConvertFormValue(key As String, val As String) As String
+    
+    val = Trim(val)
+    
+    Select Case key
+        
+        Case "IsPrimaryName"
+            '▼ True → ○ (e2 97 8b, ChrW(9675))、False → -
+            If LCase(val) = "true" Then
+                ConvertFormValue = ChrW(9675)  '○
+            ElseIf LCase(val) = "false" Or val = "" Then
+                ConvertFormValue = "-"
+            Else
+                ConvertFormValue = val
+            End If
+        
+        Case "RequiredLevel"
+            '▼ None → -、SystemRequired → 必須項目
+            Select Case val
+                Case "None": ConvertFormValue = "-"
+                Case "SystemRequired": ConvertFormValue = "必須項目"
+                Case Else: ConvertFormValue = val
+            End Select
+        
+        Case Else
+            '▼ その他のTrue/Falseはそのまま
+            ConvertFormValue = val
+    End Select
+
+End Function
+
+
+'========================================================================
+'  フォームTypeの変換
+'========================================================================
+Private Function ConvertFormType(val As String) As String
+    
+    val = Trim(val)
+    
+    Select Case val
+        Case "Simple": ConvertFormType = "シンプル"
+        Case "Calculated": ConvertFormType = "計算済みの列"
+        Case "Rollup": ConvertFormType = "ロールアップ列"
+        Case Else: ConvertFormType = val
     End Select
 
 End Function
