@@ -469,7 +469,6 @@ For Each file In folder.Files
                                 
                                 ' targets:の処理（V7 = 22列目）
                                 If additionalDataValue <> "" Then
-                                    Dim targetsPos
                                     targetsPos = InStr(1, additionalDataValue, "targets:", vbTextCompare)
                                     If targetsPos > 0 Then
                                         targetsValue = Mid(additionalDataValue, targetsPos + Len("targets:"))
@@ -486,7 +485,6 @@ For Each file In folder.Files
                                     End If
                                     
                                     ' Format:の処理
-                                    Dim formatPos
                                     formatPos = InStr(1, additionalDataValue, "Format:", vbTextCompare)
                                     If formatPos > 0 Then
                                         formatValue = Mid(additionalDataValue, formatPos + Len("Format:"))
@@ -497,7 +495,6 @@ For Each file In folder.Files
                                         formatValue = Trim(formatValue)
                                         
                                         ' DateAndTime/DateOnlyの変換
-                                        Dim lowerFormatValue
                                         lowerFormatValue = LCase(formatValue)
                                         If InStr(lowerFormatValue, "dateandtime") > 0 Then
                                             formatValue = "日付と時刻 - 日時"
@@ -513,7 +510,6 @@ For Each file In folder.Files
                                 End If
                                 
                                 ' ▼ Attribute TypeがLookupの場合は検索に変換
-                                Dim attributeTypeValue
                                 attributeTypeValue = ""
                                 If colIndexDict2.Exists("attribute type") Then
                                     On Error Resume Next
