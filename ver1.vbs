@@ -21,6 +21,8 @@ Dim primaryNameAttribute, ws2, colIndexDict2
 Dim logicalNameCol, lastRow2, row, foundRow
 Dim attributeMappingDict, attrFieldName, attrCellAddr, attrValue
 Dim rowLogicalName, pluralDisplayName
+Dim maxLengthPos, maxLengthValue, afterMaxLength, i, char
+Dim e13Value
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -190,7 +192,6 @@ For Each file In folder.Files
                         Next
                         
                         ' ▼ Plural Display Nameの値をE5にセット
-                        Dim pluralDisplayName
                         pluralDisplayName = ""
                         If colIndexDict.Exists("plural display name") Then
                             On Error Resume Next
@@ -205,6 +206,14 @@ For Each file In folder.Files
                         If pluralDisplayName <> "" Then
                             wsTable.Cells(5, 5).Value = pluralDisplayName
                             wsTable.Cells(5, 5).Font.Color = RGB(255, 0, 0)
+                        End If
+                        
+                        ' ▼ E13の値をチェック（空の場合は「なし」をセット）
+                        Dim e13Value
+                        e13Value = wsTable.Cells(13, 5).Value
+                        If e13Value = "" Or IsEmpty(e13Value) Then
+                            wsTable.Cells(13, 5).Value = "なし"
+                            wsTable.Cells(13, 5).Font.Color = RGB(255, 0, 0)
                         End If
                         
                         ' ▼ PrimaryNameAttributeの値を取得（シート1の3行目から）
@@ -288,14 +297,33 @@ For Each file In folder.Files
                                         On Error GoTo 0
                                     End If
                                     
-                                    ' True/Falseを変換
-                                    convertedValue = attrValue
-                                    If IsNumeric(attrValue) = False Then
-                                        lowerVal = LCase(Trim(CStr(attrValue)))
-                                        If lowerVal = "true" Then
-                                            convertedValue = ChrW(10003) ' ✓
-                                        ElseIf lowerVal = "false" Or lowerVal = "" Then
-                                            convertedValue = "-"
+                                    ' E21（Additional data）の場合は「Max length:」の後の数値のみを抽出
+                                    If attrCellAddr = "E21" Then
+                                        maxLengthValue = ""
+                                        maxLengthPos = InStr(1, CStr(attrValue), "Max length:", vbTextCompare)
+                                        If maxLengthPos > 0 Then
+                                            afterMaxLength = Mid(CStr(attrValue), maxLengthPos + Len("Max length:"))
+                                            ' 数値部分を抽出
+                                            For i = 1 To Len(afterMaxLength)
+                                                char = Mid(afterMaxLength, i, 1)
+                                                If IsNumeric(char) Then
+                                                    maxLengthValue = maxLengthValue & char
+                                                ElseIf maxLengthValue <> "" Then
+                                                    Exit For
+                                                End If
+                                            Next
+                                        End If
+                                        convertedValue = maxLengthValue
+                                    Else
+                                        ' True/Falseを変換
+                                        convertedValue = attrValue
+                                        If IsNumeric(attrValue) = False Then
+                                            lowerVal = LCase(Trim(CStr(attrValue)))
+                                            If lowerVal = "true" Then
+                                                convertedValue = ChrW(10003) ' ✓
+                                            ElseIf lowerVal = "false" Or lowerVal = "" Then
+                                                convertedValue = "-"
+                                            End If
                                         End If
                                     End If
                                     
