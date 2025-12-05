@@ -504,7 +504,7 @@ For Each file In folder.Files
                                         
                                         ' DateAndTime/DateOnlyの変換
                                         lowerFormatValue = LCase(formatValue)
-                                        If InStr(lowerFormatValue, "dateandtime") > 0 Then
+                                        If InStr(lowerFormatValue, "DateTime") > 0 Then
                                             formatValue = "日付と時刻 - 日時"
                                         ElseIf InStr(lowerFormatValue, "dateonly") > 0 Then
                                             formatValue = "日付と時刻 - 日付のみ"
@@ -585,12 +585,12 @@ For Each file In folder.Files
                                                 attrTypeConverted = "はい/いいえ"
                                                 optionsValue = ExtractValueFromAdditionalData(additionalDataValue, "Options:")
                                                 defaultValue = ExtractValueFromAdditionalData(additionalDataValue, "Default Value:")
-                                            Case "uniqueidentifier":
+                                            Case "Uniqueidentifier":
                                                 attrTypeConverted = "一意識別子"
                                             Case "whole number"
                                                 attrTypeConverted = "数値 - 整数(Int)"
-                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value")
-                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value")
+                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value:")
+                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value:")
                                             Case Else
                                                 ' Lookupの場合は検索に変換（既存の処理）
                                                 If lowerVal = "lookup" Then
