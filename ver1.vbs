@@ -101,6 +101,7 @@ For Each fileName In excelFiles.Keys
         openErrMsg = "ファイルを開けませんでした: " & fileName & vbCrLf & "エラー: " & Err.Description
         MsgBox openErrMsg, vbCritical, "エラー"
         Err.Clear
+        On Error GoTo 0
         ' ファイルが開けなかった場合は次のファイルへ
         GoTo CLEANUP_FILE
     End If
@@ -111,6 +112,7 @@ For Each fileName In excelFiles.Keys
     On Error Resume Next
     If wb.Sheets.Count = 0 Then
         MsgBox "シートが存在しません: " & fileName, vbWarning, "警告"
+        On Error GoTo 0
         GoTo CLEANUP_FILE
     End If
     
@@ -119,6 +121,7 @@ For Each fileName In excelFiles.Keys
     If Err.Number <> 0 Then
         MsgBox "シートの取得に失敗しました: " & fileName & vbCrLf & "エラー: " & Err.Description, vbCritical, "エラー"
         Err.Clear
+        On Error GoTo 0
         GoTo CLEANUP_FILE
     End If
     
