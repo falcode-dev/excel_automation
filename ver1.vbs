@@ -492,7 +492,7 @@ For Each file In folder.Files
                                         wsField.Cells(outputRow, 22).Font.Color = RGB(255, 0, 0)
                                     End If
                                     
-                                    ' Format:の処理（J8 = 10列目、8行目にセット）
+                                    ' Format:の処理（J7 = 10列目、outputRow行目にセット）
                                     formatPos = InStr(1, additionalDataValue, "Format:", vbTextCompare)
                                     If formatPos > 0 Then
                                         formatValue = Mid(additionalDataValue, formatPos + Len("Format:"))
@@ -510,9 +510,9 @@ For Each file In folder.Files
                                             formatValue = "日付と時刻 - 日付のみ"
                                         End If
                                         
-                                        ' J8（10列目、8行目）にセット
-                                        wsField.Cells(8, 10).Value = formatValue
-                                        wsField.Cells(8, 10).Font.Color = RGB(255, 0, 0)
+                                        ' J7（10列目、outputRow行目）にセット
+                                        wsField.Cells(outputRow, 10).Value = formatValue
+                                        wsField.Cells(outputRow, 10).Font.Color = RGB(255, 0, 0)
                                     End If
                                     
                                     ' ▼ Attribute Typeの変換とAdditional dataの処理
@@ -585,7 +585,7 @@ For Each file In folder.Files
                                                 attrTypeConverted = "はい/いいえ"
                                                 optionsValue = ExtractValueFromAdditionalData(additionalDataValue, "Options:")
                                                 defaultValue = ExtractValueFromAdditionalData(additionalDataValue, "Default Value:")
-                                            Case "Uniqueidentifier":
+                                            Case "Uniqueidentifier"
                                                 attrTypeConverted = "一意識別子"
                                             Case "whole number"
                                                 attrTypeConverted = "数値 - 整数(Int)"
