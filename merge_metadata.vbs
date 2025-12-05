@@ -807,6 +807,8 @@ Private Sub ParseAdditionalData(wsForm As Worksheet, formRow As Long, additional
             valueText = Replace(valueText, vbLf, " ")
             valueText = Replace(valueText, vbCr, " ")
             valueText = Trim(valueText)
+            '▼ タイムゾーンの値を変換
+            valueText = ConvertTimezoneValue(valueText)
             If formColIndex.Exists("タイムゾーン") Then
                 colNum = formColIndex("タイムゾーン")
                 wsForm.Cells(formRow, colNum).Value = valueText
@@ -957,6 +959,22 @@ Private Function ExtractNumber(text As String) As String
     Next i
     
     ExtractNumber = result
+
+End Function
+
+
+'========================================================================
+'  タイムゾーンの値を変換
+'========================================================================
+Private Function ConvertTimezoneValue(val As String) As String
+    
+    val = Trim(val)
+    
+    Select Case val
+        Case "DateAndTime": ConvertTimezoneValue = "ユーザーローカル"
+        Case "DateOnly": ConvertTimezoneValue = "日付のみ"
+        Case Else: ConvertTimezoneValue = val
+    End Select
 
 End Function
 
