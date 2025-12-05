@@ -86,7 +86,6 @@ For Each file In folder.Files
             mappingDict.Add "Change TrackingEnabled", "E23"
             mappingDict.Add "Description", "E7"
             mappingDict.Add "DisplayCollectionName", "E6"
-            mappingDict.Add "DisplayName", "E5"
             mappingDict.Add "EntityColor", "E14"
             mappingDict.Add "EntityHelpUrl", "E25"
             mappingDict.Add "EntityHelpUrlEnabled", "E24"
@@ -165,7 +164,6 @@ For Each file In folder.Files
                             End If
                             
                             ' セルアドレスを解析（例：E5 → 行5、列5）
-                            Dim rowNum, colNum
                             colNum = Asc(UCase(Left(cellAddr, 1))) - 64 ' A=1, B=2, ..., E=5
                             rowNum = CInt(Mid(cellAddr, 2))
                             
