@@ -1,14 +1,18 @@
 Option Explicit
 
 '────────────────────────────────────────
-'  シンプル処理：ドラッグ&ドロップでフォルダを受け取り、
-'  フォルダ内のExcelファイルのA3とA4の値を順にポップアップで表示
+'  処理：ドラッグ&ドロップでフォルダを受け取り、
+'  フォルダ内のExcelファイルからDisplayNameを取得し、
+'  template.xlsxをベースに出力ファイルを作成
 '────────────────────────────────────────
 
-Dim fso, excel, wb, ws
+Dim fso, excel, wb, ws, wbTemplate, wsTable, wsCover
 Dim folderPath, folder, file
 Dim fileName, filePath, fileExt
-Dim valueA3, valueA4, resultMsg
+Dim templatePath, outputFolderPath, outputFilePath
+Dim displayName, displayNameCol
+Dim lastCol, col, colName
+Dim outputFileName
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -28,6 +32,23 @@ If Not fso.FolderExists(folderPath) Then
 End If
 
 Set folder = fso.GetFolder(folderPath)
+
+' ▼ template.xlsxのパスを取得（同じ階層）
+templatePath = fso.BuildPath(fso.GetParentFolderName(folderPath), "template.xlsx")
+
+' ▼ template.xlsxの存在チェック
+If Not fso.FileExists(templatePath) Then
+    MsgBox "template.xlsxが見つかりません: " & templatePath, vbCritical, "エラー"
+    WScript.Quit
+End If
+
+' ▼ 出力フォルダのパスを取得（同じ階層の「20_作成済定義書」）
+outputFolderPath = fso.BuildPath(fso.GetParentFolderName(folderPath), "20_作成済定義書")
+
+' ▼ 出力フォルダが存在しない場合は作成
+If Not fso.FolderExists(outputFolderPath) Then
+    fso.CreateFolder outputFolderPath
+End If
 
 ' ▼ Excel起動
 Set excel = CreateObject("Excel.Application")
@@ -54,27 +75,89 @@ For Each file In folder.Files
             ' 1シート目を取得
             Set ws = wb.Sheets(1)
             
-            ' A3とA4の値を取得
-            On Error Resume Next
-            valueA3 = ws.Cells(3, 1).Value2
-            If Err.Number <> 0 Then
-                valueA3 = ""
-                Err.Clear
+            ' 3行目から「DisplayName」列を探す
+            displayName = ""
+            displayNameCol = 0
+            
+            ' 最終列を取得
+            lastCol = ws.Cells(3, ws.Columns.Count).End(-4159).Column ' xlToLeft
+            
+            ' 3行目を走査して「DisplayName」列を探す
+            For col = 1 To lastCol
+                colName = Trim(CStr(ws.Cells(3, col).Value2))
+                If LCase(colName) = "displayname" Then
+                    displayNameCol = col
+                    ' 4行目の値を取得（3行目がヘッダー、4行目がデータと仮定）
+                    On Error Resume Next
+                    displayName = CStr(ws.Cells(4, col).Value2)
+                    If Err.Number <> 0 Then
+                        displayName = ""
+                        Err.Clear
+                    End If
+                    On Error GoTo 0
+                    Exit For
+                End If
+            Next
+            
+            ' DisplayNameが見つかった場合のみ処理
+            If displayName <> "" Then
+                ' template.xlsxを開く
+                On Error Resume Next
+                Set wbTemplate = excel.Workbooks.Open(templatePath, 0, False)
+                
+                If Err.Number = 0 Then
+                    On Error GoTo 0
+                    
+                    ' シート「テーブル」と「表紙」を取得
+                    On Error Resume Next
+                    Set wsTable = wbTemplate.Sheets("テーブル")
+                    Set wsCover = wbTemplate.Sheets("表紙")
+                    
+                    If Err.Number = 0 Then
+                        On Error GoTo 0
+                        
+                        ' シート「テーブル」のE5にDisplayNameをセット
+                        wsTable.Cells(5, 5).Value = displayName
+                        
+                        ' シート「表紙」のB7に「エンティティ定義書_ID_<DisplayNameの値>_v0.1」をセット
+                        wsCover.Cells(7, 2).Value = "エンティティ定義書_ID_" & displayName & "_v0.1"
+                        
+                        ' 出力ファイル名を生成
+                        outputFileName = "エンティティ定義書_ID_" & displayName & "_v0.1.xlsx"
+                        outputFilePath = fso.BuildPath(outputFolderPath, outputFileName)
+                        
+                        ' 既存ファイルがある場合は削除
+                        If fso.FileExists(outputFilePath) Then
+                            fso.DeleteFile outputFilePath, True
+                        End If
+                        
+                        ' ファイルを保存
+                        wbTemplate.SaveAs outputFilePath
+                        
+                        ' template.xlsxを閉じる（変更を保存しない）
+                        wbTemplate.Close False
+                        Set wbTemplate = Nothing
+                        Set wsTable = Nothing
+                        Set wsCover = Nothing
+                    Else
+                        MsgBox "シート「テーブル」または「表紙」が見つかりません: " & fileName, vbCritical, "エラー"
+                        Err.Clear
+                        On Error GoTo 0
+                        If Not wbTemplate Is Nothing Then
+                            wbTemplate.Close False
+                            Set wbTemplate = Nothing
+                        End If
+                    End If
+                Else
+                    MsgBox "template.xlsxを開けませんでした: " & Err.Description, vbCritical, "エラー"
+                    Err.Clear
+                    On Error GoTo 0
+                End If
+            Else
+                MsgBox "DisplayNameが見つかりませんでした: " & fileName, vbWarning, "警告"
             End If
             
-            valueA4 = ws.Cells(4, 1).Value2
-            If Err.Number <> 0 Then
-                valueA4 = ""
-                Err.Clear
-            End If
-            On Error GoTo 0
-            
-            ' 結果をポップアップで表示
-            resultMsg = "ファイル: " & fileName & vbCrLf & vbCrLf
-            resultMsg = resultMsg & "A3の値: " & CStr(valueA3) & vbCrLf & "A4の値: " & CStr(valueA4)
-            MsgBox resultMsg, vbInformation, "結果"
-            
-            ' ファイルを閉じる
+            ' 元のファイルを閉じる
             wb.Close False
             Set wb = Nothing
             Set ws = Nothing
@@ -89,3 +172,5 @@ Next
 ' ▼ Excel終了
 excel.Quit
 Set excel = Nothing
+
+MsgBox "処理が完了しました。", vbInformation, "完了"
