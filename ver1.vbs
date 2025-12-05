@@ -209,7 +209,6 @@ For Each file In folder.Files
                         End If
                         
                         ' ▼ E13の値をチェック（空の場合は「なし」をセット）
-                        Dim e13Value
                         e13Value = wsTable.Cells(13, 5).Value
                         If e13Value = "" Or IsEmpty(e13Value) Then
                             wsTable.Cells(13, 5).Value = "なし"
