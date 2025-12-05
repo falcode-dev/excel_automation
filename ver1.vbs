@@ -394,16 +394,20 @@ For Each file In folder.Files
                                         On Error GoTo 0
                                     End If
                                     
-                                    ' フィールドごとの変換処理
+                                    ' フィールドごとの変換処理（空の値は空のまま）
                                     convertedValue = fieldValue2
-                                    If IsNumeric(fieldValue2) = False Then
+                                    
+                                    ' 空の値の場合は変換せずに空のまま
+                                    If fieldValue2 = "" Or IsEmpty(fieldValue2) Then
+                                        convertedValue = ""
+                                    ElseIf IsNumeric(fieldValue2) = False Then
                                         lowerVal = LCase(Trim(CStr(fieldValue2)))
                                         
                                         ' Custom Attributeの変換（True → カスタム、False → 標準）
                                         If fieldName = "Custom Attribute" Then
                                             If lowerVal = "true" Then
                                                 convertedValue = "カスタム"
-                                            ElseIf lowerVal = "false" Or lowerVal = "" Then
+                                            ElseIf lowerVal = "false" Then
                                                 convertedValue = "標準"
                                             End If
                                         ' Typeの変換（Simple → シンプル、Calculated → 計算、Rollup → ロールアップ）
@@ -424,6 +428,8 @@ For Each file In folder.Files
                                                 Case "none"
                                                     convertedValue = "任意"
                                                 Case "applicationrequired"
+                                                    convertedValue = "システム要求"
+                                                Case "systemrequired"
                                                     convertedValue = "必須項目"
                                                 Case "recommended"
                                                     convertedValue = "推奨項目"
@@ -434,7 +440,7 @@ For Each file In folder.Files
                                         Else
                                             If lowerVal = "true" Then
                                                 convertedValue = "TRUE"
-                                            ElseIf lowerVal = "false" Or lowerVal = "" Then
+                                            ElseIf lowerVal = "false" Then
                                                 convertedValue = "FALSE"
                                             End If
                                         End If
