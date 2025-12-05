@@ -24,6 +24,8 @@ Dim rowLogicalName, pluralDisplayName
 Dim maxLengthPos, maxLengthValue, afterMaxLength, i, char
 Dim e13Value, wsField
 Dim fieldMappingDict, outputRow, fieldValue2, outputCol
+Dim additionalDataValue, targetsValue, formatValue, targetsPos, formatPos
+Dim lowerFormatValue, attributeTypeValue
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -450,6 +452,85 @@ For Each file In folder.Files
                                     wsField.Cells(outputRow, outputCol).Value = convertedValue
                                     wsField.Cells(outputRow, outputCol).Font.Color = RGB(255, 0, 0)
                                 Next
+                                
+                                ' ▼ Additional dataの処理
+                                Dim additionalDataValue, targetsValue, formatValue
+                                additionalDataValue = ""
+                                
+                                ' Additional dataの値を取得
+                                If colIndexDict2.Exists("additional data") Then
+                                    On Error Resume Next
+                                    additionalDataValue = CStr(ws2.Cells(row, colIndexDict2("additional data")).Value2)
+                                    If Err.Number <> 0 Then
+                                        additionalDataValue = ""
+                                        Err.Clear
+                                    End If
+                                    On Error GoTo 0
+                                End If
+                                
+                                ' targets:の処理（V7 = 22列目）
+                                If additionalDataValue <> "" Then
+                                    Dim targetsPos
+                                    targetsPos = InStr(1, additionalDataValue, "targets:", vbTextCompare)
+                                    If targetsPos > 0 Then
+                                        targetsValue = Mid(additionalDataValue, targetsPos + Len("targets:"))
+                                        ' 改行やスペースを取り除く
+                                        targetsValue = Replace(targetsValue, vbCrLf, "")
+                                        targetsValue = Replace(targetsValue, vbLf, "")
+                                        targetsValue = Replace(targetsValue, vbCr, "")
+                                        targetsValue = Replace(targetsValue, " ", "")
+                                        targetsValue = Trim(targetsValue)
+                                        
+                                        ' V7（22列目）にセット
+                                        wsField.Cells(outputRow, 22).Value = targetsValue
+                                        wsField.Cells(outputRow, 22).Font.Color = RGB(255, 0, 0)
+                                    End If
+                                    
+                                    ' Format:の処理
+                                    Dim formatPos
+                                    formatPos = InStr(1, additionalDataValue, "Format:", vbTextCompare)
+                                    If formatPos > 0 Then
+                                        formatValue = Mid(additionalDataValue, formatPos + Len("Format:"))
+                                        ' 改行やスペースを取り除く
+                                        formatValue = Replace(formatValue, vbCrLf, "")
+                                        formatValue = Replace(formatValue, vbLf, "")
+                                        formatValue = Replace(formatValue, vbCr, "")
+                                        formatValue = Trim(formatValue)
+                                        
+                                        ' DateAndTime/DateOnlyの変換
+                                        Dim lowerFormatValue
+                                        lowerFormatValue = LCase(formatValue)
+                                        If InStr(lowerFormatValue, "dateandtime") > 0 Then
+                                            formatValue = "日付と時刻 - 日時"
+                                        ElseIf InStr(lowerFormatValue, "dateonly") > 0 Then
+                                            formatValue = "日付と時刻 - 日付のみ"
+                                        End If
+                                        
+                                        ' どこにセットするか確認が必要ですが、一旦V列の次の列（W列 = 23列目）にセット
+                                        ' 必要に応じて列番号を調整してください
+                                        wsField.Cells(outputRow, 23).Value = formatValue
+                                        wsField.Cells(outputRow, 23).Font.Color = RGB(255, 0, 0)
+                                    End If
+                                End If
+                                
+                                ' ▼ Attribute TypeがLookupの場合は検索に変換
+                                Dim attributeTypeValue
+                                attributeTypeValue = ""
+                                If colIndexDict2.Exists("attribute type") Then
+                                    On Error Resume Next
+                                    attributeTypeValue = CStr(ws2.Cells(row, colIndexDict2("attribute type")).Value2)
+                                    If Err.Number <> 0 Then
+                                        attributeTypeValue = ""
+                                        Err.Clear
+                                    End If
+                                    On Error GoTo 0
+                                    
+                                    If LCase(Trim(attributeTypeValue)) = "lookup" Then
+                                        ' Attribute Typeの列（J列 = 10列目）に「検索」をセット
+                                        wsField.Cells(outputRow, 10).Value = "検索"
+                                        wsField.Cells(outputRow, 10).Font.Color = RGB(255, 0, 0)
+                                    End If
+                                End If
                                 
                                 outputRow = outputRow + 1
                             Next
