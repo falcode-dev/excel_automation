@@ -27,6 +27,7 @@ Dim fieldMappingDict, outputRow, fieldValue2, outputCol
 Dim additionalDataValue, targetsValue, formatValue, targetsPos, formatPos
 Dim lowerFormatValue, attributeTypeValue
 Dim attrTypeConverted, minValue, maxValue, optionsValue, defaultValue, targetValue, statesValue
+Dim precisionPos
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -466,6 +467,13 @@ For Each file In folder.Files
                                         Err.Clear
                                     End If
                                     On Error GoTo 0
+                                    
+                                    ' Precision:以降を削除
+                                    Dim precisionPos
+                                    precisionPos = InStr(1, additionalDataValue, "Precision:", vbTextCompare)
+                                    If precisionPos > 0 Then
+                                        additionalDataValue = Left(additionalDataValue, precisionPos - 1)
+                                    End If
                                 End If
                                 
                                 ' targets:の処理（V7 = 22列目）
@@ -533,8 +541,8 @@ For Each file In folder.Files
                                             Case "bigint"
                                                 attrTypeConverted = "数値 - 整数(Int)"
                                                 ' Minimum value/Maximum valueを抽出
-                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value")
-                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value")
+                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value:")
+                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value:")
                                             Case "choice"
                                                 attrTypeConverted = "選択肢"
                                                 optionsValue = ExtractValueFromAdditionalData(additionalDataValue, "Options:")
@@ -551,16 +559,16 @@ For Each file In folder.Files
                                                 End If
                                             Case "currency"
                                                 attrTypeConverted = "通貨"
-                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value")
-                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value")
+                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value:")
+                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value:")
                                             Case "decimal"
                                                 attrTypeConverted = "数値 - 少数(10進数)"
-                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value")
-                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value")
+                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value:")
+                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value:")
                                             Case "double"
                                                 attrTypeConverted = "数値 - 浮動小数点数"
-                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value")
-                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value")
+                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value:")
+                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value:")
                                             Case "multiline text"
                                                 attrTypeConverted = "複数行テキスト - プレーン"
                                             Case "owner"
@@ -578,7 +586,7 @@ For Each file In folder.Files
                                                 attrTypeConverted = "はい/いいえ"
                                                 optionsValue = ExtractValueFromAdditionalData(additionalDataValue, "Options:")
                                                 defaultValue = ExtractValueFromAdditionalData(additionalDataValue, "Default Value:")
-                                            Case "uniqueidentifier"
+                                            Case "uniqueidentifier":
                                                 attrTypeConverted = "一意識別子"
                                             Case "whole number"
                                                 attrTypeConverted = "数値 - 整数(Int)"
