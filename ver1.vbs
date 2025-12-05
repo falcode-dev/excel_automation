@@ -22,7 +22,8 @@ Dim logicalNameCol, lastRow2, row, foundRow
 Dim attributeMappingDict, attrFieldName, attrCellAddr, attrValue
 Dim rowLogicalName, pluralDisplayName
 Dim maxLengthPos, maxLengthValue, afterMaxLength, i, char
-Dim e13Value
+Dim e13Value, wsField
+Dim fieldMappingDict, outputRow, fieldValue2, outputCol
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -146,10 +147,11 @@ For Each file In folder.Files
                 If Err.Number = 0 Then
                     On Error GoTo 0
                     
-                    ' シート「テーブル」と「表紙」を取得
+                    ' シート「テーブル」「表紙」「フィールド」を取得
                     On Error Resume Next
                     Set wsTable = wbTemplate.Sheets("テーブル")
                     Set wsCover = wbTemplate.Sheets("表紙")
+                    Set wsField = wbTemplate.Sheets("フィールド")
                     
                     If Err.Number = 0 Then
                         On Error GoTo 0
@@ -339,6 +341,82 @@ For Each file In folder.Files
                             End If
                             
                             Set colIndexDict2 = Nothing
+                        End If
+                        
+                        ' ▼ シート2の2行目以降のデータをシート「フィールド」に出力
+                        If wb.Sheets.Count >= 2 Then
+                            Set ws2 = wb.Sheets(2)
+                            
+                            ' シート2の1行目（ヘッダー行）から列インデックスを作成
+                            Set colIndexDict2 = CreateObject("Scripting.Dictionary")
+                            lastCol = ws2.Cells(1, ws2.Columns.Count).End(-4159).Column ' xlToLeft
+                            
+                            For col = 1 To lastCol
+                                colName = Trim(CStr(ws2.Cells(1, col).Value2))
+                                If colName <> "" Then
+                                    colIndexDict2(LCase(colName)) = col
+                                End If
+                            Next
+                            
+                            ' フィールドマッピング辞書を作成（フィールド名 → 列番号）
+                            Set fieldMappingDict = CreateObject("Scripting.Dictionary")
+                            fieldMappingDict.Add "Schema Name", 4    ' D列
+                            fieldMappingDict.Add "Display Name", 5   ' E列
+                            fieldMappingDict.Add "Custom Attribute", 7 ' G列
+                            fieldMappingDict.Add "Attribute Type", 10  ' J列
+                            fieldMappingDict.Add "Type", 11            ' K列
+                            fieldMappingDict.Add "Required Level", 12  ' L列
+                            fieldMappingDict.Add "Description", 31     ' AE列
+                            fieldMappingDict.Add "Audit Enabled", 24  ' X列
+                            fieldMappingDict.Add "Secured", 25         ' Y列
+                            fieldMappingDict.Add "ValidFor AdvancedFind", 28 ' AB列
+                            
+                            ' シート2の最終行を取得
+                            lastRow2 = ws2.Cells(ws2.Rows.Count, 1).End(-4162).Row ' xlUp
+                            
+                            ' 2行目以降のデータを処理
+                            Dim outputRow, fieldValue2
+                            outputRow = 7 ' 出力開始行
+                            
+                            For row = 2 To lastRow2
+                                ' 各フィールドの値を取得してセット
+                                For Each fieldName In fieldMappingDict.Keys
+                                    Dim outputCol
+                                    outputCol = fieldMappingDict(fieldName)
+                                    fieldValue2 = ""
+                                    
+                                    ' 列インデックスから値を取得
+                                    If colIndexDict2.Exists(LCase(fieldName)) Then
+                                        On Error Resume Next
+                                        fieldValue2 = ws2.Cells(row, colIndexDict2(LCase(fieldName))).Value2
+                                        If Err.Number <> 0 Then
+                                            fieldValue2 = ""
+                                            Err.Clear
+                                        End If
+                                        On Error GoTo 0
+                                    End If
+                                    
+                                    ' True/Falseを変換
+                                    convertedValue = fieldValue2
+                                    If IsNumeric(fieldValue2) = False Then
+                                        lowerVal = LCase(Trim(CStr(fieldValue2)))
+                                        If lowerVal = "true" Then
+                                            convertedValue = ChrW(10003) ' ✓
+                                        ElseIf lowerVal = "false" Or lowerVal = "" Then
+                                            convertedValue = "-"
+                                        End If
+                                    End If
+                                    
+                                    ' 値をセット（赤文字）
+                                    wsField.Cells(outputRow, outputCol).Value = convertedValue
+                                    wsField.Cells(outputRow, outputCol).Font.Color = RGB(255, 0, 0)
+                                Next
+                                
+                                outputRow = outputRow + 1
+                            Next
+                            
+                            Set fieldMappingDict = Nothing
+                            Set colIndexDict2 = Nothing
                             Set ws2 = Nothing
                         End If
                         
@@ -362,6 +440,7 @@ For Each file In folder.Files
                         Set wbTemplate = Nothing
                         Set wsTable = Nothing
                         Set wsCover = Nothing
+                        Set wsField = Nothing
                     Else
                         MsgBox "シート「テーブル」または「表紙」が見つかりません: " & fileName, vbCritical, "エラー"
                         Err.Clear
