@@ -394,14 +394,49 @@ For Each file In folder.Files
                                         On Error GoTo 0
                                     End If
                                     
-                                    ' True/Falseを変換
+                                    ' フィールドごとの変換処理
                                     convertedValue = fieldValue2
                                     If IsNumeric(fieldValue2) = False Then
                                         lowerVal = LCase(Trim(CStr(fieldValue2)))
-                                        If lowerVal = "true" Then
-                                            convertedValue = ChrW(10003) ' ✓
-                                        ElseIf lowerVal = "false" Or lowerVal = "" Then
-                                            convertedValue = "-"
+                                        
+                                        ' Custom Attributeの変換（True → カスタム、False → 標準）
+                                        If fieldName = "Custom Attribute" Then
+                                            If lowerVal = "true" Then
+                                                convertedValue = "カスタム"
+                                            ElseIf lowerVal = "false" Or lowerVal = "" Then
+                                                convertedValue = "標準"
+                                            End If
+                                        ' Typeの変換（Simple → シンプル、Calculated → 計算、Rollup → ロールアップ）
+                                        ElseIf fieldName = "Type" Then
+                                            Select Case lowerVal
+                                                Case "simple"
+                                                    convertedValue = "シンプル"
+                                                Case "calculated"
+                                                    convertedValue = "計算"
+                                                Case "rollup"
+                                                    convertedValue = "ロールアップ"
+                                                Case Else
+                                                    convertedValue = fieldValue2
+                                            End Select
+                                        ' Required Levelの変換（None → 任意、ApplicationRequired → 必須項目、Recommended → 推奨項目）
+                                        ElseIf fieldName = "Required Level" Then
+                                            Select Case lowerVal
+                                                Case "none"
+                                                    convertedValue = "任意"
+                                                Case "applicationrequired"
+                                                    convertedValue = "必須項目"
+                                                Case "recommended"
+                                                    convertedValue = "推奨項目"
+                                                Case Else
+                                                    convertedValue = fieldValue2
+                                            End Select
+                                        ' その他のTrue/FalseはTRUE/FALSEに変換（シート「フィールド」用）
+                                        Else
+                                            If lowerVal = "true" Then
+                                                convertedValue = "TRUE"
+                                            ElseIf lowerVal = "false" Or lowerVal = "" Then
+                                                convertedValue = "FALSE"
+                                            End If
                                         End If
                                     End If
                                     
