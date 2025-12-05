@@ -715,7 +715,7 @@ MsgBox "処理が完了しました。", vbInformation, "完了"
 '────────────────────────────────────────
 '  関数：Additional dataから値を抽出
 '────────────────────────────────────────
-Function ExtractValueFromAdditionalData(additionalData As String, keyword As String) As String
+Function ExtractValueFromAdditionalData(additionalData, keyword)
     Dim pos, valueStart, valueEnd, nextKeywordPos
     Dim result, tempValue
     Dim keywords
