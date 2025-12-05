@@ -13,6 +13,9 @@ Dim templatePath, outputFolderPath, outputFilePath
 Dim displayName, displayNameCol
 Dim lastCol, col, colName
 Dim outputFileName
+Dim mappingDict, colIndexDict
+Dim fieldName, cellAddr, fieldValue
+Dim rowNum, colNum
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -75,29 +78,58 @@ For Each file In folder.Files
             ' 1シート目を取得
             Set ws = wb.Sheets(1)
             
-            ' 3行目から「DisplayName」列を探す
-            displayName = ""
-            displayNameCol = 0
+            ' マッピング辞書を作成（フィールド名 → セルアドレス）
+            Set mappingDict = CreateObject("Scripting.Dictionary")
+            mappingDict.Add "Schema Name", "E9"
+            mappingDict.Add "Logical Name", "E10"
+            mappingDict.Add "Ownership Type", "E12"
+            mappingDict.Add "Change TrackingEnabled", "E23"
+            mappingDict.Add "Description", "E7"
+            mappingDict.Add "DisplayCollectionName", "E6"
+            mappingDict.Add "DisplayName", "E5"
+            mappingDict.Add "EntityColor", "E14"
+            mappingDict.Add "EntityHelpUrl", "E25"
+            mappingDict.Add "EntityHelpUrlEnabled", "E24"
+            mappingDict.Add "HasEmailAddresses", "E35"
+            mappingDict.Add "HasFeedback", "E37"
+            mappingDict.Add "HasNotes", "E8"
+            mappingDict.Add "IsActivity", "E30"
+            mappingDict.Add "IsAuditEnabled", "E26"
+            mappingDict.Add "IsAvailableOffline", "E39"
+            mappingDict.Add "IsConnectionsEnabled", "E34"
+            mappingDict.Add "IsDocumentManagementEnabled", "E33"
+            mappingDict.Add "IsDuplicateDetection Enabled", "E22"
+            mappingDict.Add "IsMailMergeEnabled", "E31"
+            mappingDict.Add "IsQuickCreateEnabled", "E27"
+            mappingDict.Add "IsRetentionEnabled", "E28"
+            mappingDict.Add "IsSLAEnabled", "E32"
+            mappingDict.Add "IsValidForAdvancedFind", "E38"
+            mappingDict.Add "IsValidForQueue", "E40"
+            mappingDict.Add "PrimarylmageAttribute", "E15"
+            mappingDict.Add "TableType", "E11"
             
-            ' 最終列を取得
+            ' 3行目（ヘッダー行）から列インデックスを作成
+            Set colIndexDict = CreateObject("Scripting.Dictionary")
             lastCol = ws.Cells(3, ws.Columns.Count).End(-4159).Column ' xlToLeft
             
-            ' 3行目を走査して「DisplayName」列を探す
             For col = 1 To lastCol
                 colName = Trim(CStr(ws.Cells(3, col).Value2))
-                If LCase(colName) = "displayname" Then
-                    displayNameCol = col
-                    ' 4行目の値を取得（3行目がヘッダー、4行目がデータと仮定）
-                    On Error Resume Next
-                    displayName = CStr(ws.Cells(4, col).Value2)
-                    If Err.Number <> 0 Then
-                        displayName = ""
-                        Err.Clear
-                    End If
-                    On Error GoTo 0
-                    Exit For
+                If colName <> "" Then
+                    colIndexDict(LCase(colName)) = col
                 End If
             Next
+            
+            ' DisplayNameを取得（ファイル名生成用）
+            displayName = ""
+            If colIndexDict.Exists("displayname") Then
+                On Error Resume Next
+                displayName = CStr(ws.Cells(4, colIndexDict("displayname")).Value2)
+                If Err.Number <> 0 Then
+                    displayName = ""
+                    Err.Clear
+                End If
+                On Error GoTo 0
+            End If
             
             ' DisplayNameが見つかった場合のみ処理
             If displayName <> "" Then
@@ -116,8 +148,30 @@ For Each file In folder.Files
                     If Err.Number = 0 Then
                         On Error GoTo 0
                         
-                        ' シート「テーブル」のE5にDisplayNameをセット
-                        wsTable.Cells(5, 5).Value = displayName
+                        ' マッピングに従って値をセット
+                        For Each fieldName In mappingDict.Keys
+                            cellAddr = mappingDict(fieldName)
+                            fieldValue = ""
+                            
+                            ' 列インデックスから値を取得
+                            If colIndexDict.Exists(LCase(fieldName)) Then
+                                On Error Resume Next
+                                fieldValue = ws.Cells(4, colIndexDict(LCase(fieldName))).Value2
+                                If Err.Number <> 0 Then
+                                    fieldValue = ""
+                                    Err.Clear
+                                End If
+                                On Error GoTo 0
+                            End If
+                            
+                            ' セルアドレスを解析（例：E5 → 行5、列5）
+                            Dim rowNum, colNum
+                            colNum = Asc(UCase(Left(cellAddr, 1))) - 64 ' A=1, B=2, ..., E=5
+                            rowNum = CInt(Mid(cellAddr, 2))
+                            
+                            ' 値をセット
+                            wsTable.Cells(rowNum, colNum).Value = fieldValue
+                        Next
                         
                         ' シート「表紙」のB7に「エンティティ定義書_ID_<DisplayNameの値>_v0.1」をセット
                         wsCover.Cells(7, 2).Value = "エンティティ定義書_ID_" & displayName & "_v0.1"
