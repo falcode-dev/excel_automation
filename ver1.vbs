@@ -17,6 +17,10 @@ Dim mappingDict, colIndexDict
 Dim fieldName, cellAddr, fieldValue
 Dim rowNum, colNum
 Dim convertedValue, lowerVal
+Dim primaryNameAttribute, ws2, colIndexDict2
+Dim logicalNameCol, lastRow2, row, foundRow
+Dim attributeMappingDict, attrFieldName, attrCellAddr, attrValue
+Dim rowLogicalName
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -184,6 +188,115 @@ For Each file In folder.Files
                             ' セットした値を赤文字にする
                             wsTable.Cells(rowNum, colNum).Font.Color = RGB(255, 0, 0)
                         Next
+                        
+                        ' ▼ PrimaryNameAttributeの値を取得（シート1の3行目から）
+                        primaryNameAttribute = ""
+                        If colIndexDict.Exists("primarynameattribute") Then
+                            On Error Resume Next
+                            primaryNameAttribute = CStr(ws.Cells(4, colIndexDict("primarynameattribute")).Value2)
+                            If Err.Number <> 0 Then
+                                primaryNameAttribute = ""
+                                Err.Clear
+                            End If
+                            On Error GoTo 0
+                        End If
+                        
+                        ' ▼ シート2から該当行を検索して値をセット
+                        If primaryNameAttribute <> "" And wb.Sheets.Count >= 2 Then
+                            Set ws2 = wb.Sheets(2)
+                            
+                            ' シート2の1行目（ヘッダー行）から列インデックスを作成
+                            Set colIndexDict2 = CreateObject("Scripting.Dictionary")
+                            lastCol = ws2.Cells(1, ws2.Columns.Count).End(-4159).Column ' xlToLeft
+                            
+                            For col = 1 To lastCol
+                                colName = Trim(CStr(ws2.Cells(1, col).Value2))
+                                If colName <> "" Then
+                                    colIndexDict2(LCase(colName)) = col
+                                End If
+                            Next
+                            
+                            ' Logical Name列の位置を取得
+                            logicalNameCol = 0
+                            If colIndexDict2.Exists("logical name") Then
+                                logicalNameCol = colIndexDict2("logical name")
+                            End If
+                            
+                            ' PrimaryNameAttributeと一致する行を検索
+                            foundRow = 0
+                            If logicalNameCol > 0 Then
+                                lastRow2 = ws2.Cells(ws2.Rows.Count, logicalNameCol).End(-4162).Row ' xlUp
+                                
+                                For row = 2 To lastRow2
+                                    On Error Resume Next
+                                    Dim rowLogicalName
+                                    rowLogicalName = Trim(CStr(ws2.Cells(row, logicalNameCol).Value2))
+                                    If Err.Number <> 0 Then
+                                        rowLogicalName = ""
+                                        Err.Clear
+                                    End If
+                                    On Error GoTo 0
+                                    
+                                    If LCase(rowLogicalName) = LCase(primaryNameAttribute) Then
+                                        foundRow = row
+                                        Exit For
+                                    End If
+                                Next
+                            End If
+                            
+                            ' 該当行が見つかった場合、値をセット
+                            If foundRow > 0 Then
+                                ' 属性マッピング辞書を作成
+                                Set attributeMappingDict = CreateObject("Scripting.Dictionary")
+                                attributeMappingDict.Add "Display Name", "E16"
+                                attributeMappingDict.Add "Description", "E17"
+                                attributeMappingDict.Add "Schema Name", "E18"
+                                attributeMappingDict.Add "Logical Name", "E19"
+                                attributeMappingDict.Add "Required Level", "E20"
+                                attributeMappingDict.Add "Additional data", "E21"
+                                
+                                ' 各属性の値を取得してセット
+                                For Each attrFieldName In attributeMappingDict.Keys
+                                    attrCellAddr = attributeMappingDict(attrFieldName)
+                                    attrValue = ""
+                                    
+                                    ' 列インデックスから値を取得
+                                    If colIndexDict2.Exists(LCase(attrFieldName)) Then
+                                        On Error Resume Next
+                                        attrValue = ws2.Cells(foundRow, colIndexDict2(LCase(attrFieldName))).Value2
+                                        If Err.Number <> 0 Then
+                                            attrValue = ""
+                                            Err.Clear
+                                        End If
+                                        On Error GoTo 0
+                                    End If
+                                    
+                                    ' True/Falseを変換
+                                    convertedValue = attrValue
+                                    If IsNumeric(attrValue) = False Then
+                                        lowerVal = LCase(Trim(CStr(attrValue)))
+                                        If lowerVal = "true" Then
+                                            convertedValue = ChrW(10003) ' ✓
+                                        ElseIf lowerVal = "false" Or lowerVal = "" Then
+                                            convertedValue = "-"
+                                        End If
+                                    End If
+                                    
+                                    ' セルアドレスを解析
+                                    colNum = Asc(UCase(Left(attrCellAddr, 1))) - 64
+                                    rowNum = CInt(Mid(attrCellAddr, 2))
+                                    
+                                    ' 値をセット（赤文字）
+                                    wsTable.Cells(rowNum, colNum).Value = convertedValue
+                                    wsTable.Cells(rowNum, colNum).Font.Color = RGB(255, 0, 0)
+                                Next
+                                
+                                Set attributeMappingDict = Nothing
+                            End If
+                            
+                            Set colIndexDict2 = Nothing
+                            Set ws2 = Nothing
+                        End If
                         
                         ' シート「表紙」のB7に「エンティティ定義書_ID_<DisplayNameの値>_v0.1」をセット
                         wsCover.Cells(7, 2).Value = "エンティティ定義書_ID_" & displayName & "_v0.1"
