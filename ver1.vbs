@@ -375,7 +375,6 @@ For Each file In folder.Files
                             lastRow2 = ws2.Cells(ws2.Rows.Count, 1).End(-4162).Row ' xlUp
                             
                             ' 2行目以降のデータを処理
-                            Dim outputRow, fieldValue2
                             outputRow = 7 ' 出力開始行
                             
                             For row = 2 To lastRow2
