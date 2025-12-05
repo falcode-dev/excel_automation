@@ -12,7 +12,7 @@ Dim wb, ws
 Dim row3Data, row4Data
 Dim lastCol, col
 Dim resultMsg, cellValue3, cellValue4
-Dim i
+Dim i, filePath, cell3, cell4
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -71,10 +71,13 @@ If excelFiles.Count = 0 Then
     WScript.Quit
 End If
 
-' ▼ Excel起動
+' ▼ Excel起動（日本語対応設定）
 Set excel = CreateObject("Excel.Application")
 excel.Visible = False
 excel.DisplayAlerts = False
+' 日本語環境に対応
+excel.EnableEvents = False
+excel.ScreenUpdating = False
 
 ' ▼ 各Excelファイルを処理
 Dim processedCount
@@ -90,8 +93,11 @@ For Each fileName In excelFiles.Keys
     
     On Error Resume Next
     
-    ' Excelファイルを開く
-    Set wb = excel.Workbooks.Open(excelFiles(fileName), ReadOnly:=True)
+    ' Excelファイルを開く（日本語パス対応）
+    Dim filePath
+    filePath = excelFiles(fileName)
+    ' パスを正しく処理（日本語を含む場合も対応）
+    Set wb = excel.Workbooks.Open(filePath, ReadOnly:=True, UpdateLinks:=0)
     
     If Err.Number <> 0 Then
         Dim openErrMsg
@@ -142,14 +148,50 @@ For Each fileName In excelFiles.Keys
         cellValue3 = ""
         cellValue4 = ""
         
-        ' 3行目の値を取得
-        If Not IsEmpty(ws.Cells(3, col).Value) Then
-            cellValue3 = CStr(ws.Cells(3, col).Value)
+        ' 3行目の値を取得（日本語対応：Textプロパティを使用）
+        Set cell3 = ws.Cells(3, col)
+        Set cell4 = ws.Cells(4, col)
+        
+        If Not IsEmpty(cell3.Value) Then
+            ' 日本語対応：Value2プロパティを優先的に使用（文字化けを防ぐ）
+            On Error Resume Next
+            Dim val3
+            val3 = cell3.Value2
+            If Err.Number = 0 Then
+                ' Value2が取得できた場合
+                If IsNumeric(val3) Then
+                    cellValue3 = CStr(val3)
+                Else
+                    ' 文字列の場合はValue2をそのまま使用（日本語対応）
+                    cellValue3 = CStr(val3)
+                End If
+            Else
+                ' Value2が取得できない場合はValueを使用
+                Err.Clear
+                cellValue3 = CStr(cell3.Value)
+            End If
+            On Error GoTo 0
         End If
         
-        ' 4行目の値を取得
-        If Not IsEmpty(ws.Cells(4, col).Value) Then
-            cellValue4 = CStr(ws.Cells(4, col).Value)
+        ' 4行目の値を取得（日本語対応：Value2プロパティを優先的に使用）
+        If Not IsEmpty(cell4.Value) Then
+            On Error Resume Next
+            Dim val4
+            val4 = cell4.Value2
+            If Err.Number = 0 Then
+                ' Value2が取得できた場合
+                If IsNumeric(val4) Then
+                    cellValue4 = CStr(val4)
+                Else
+                    ' 文字列の場合はValue2をそのまま使用（日本語対応）
+                    cellValue4 = CStr(val4)
+                End If
+            Else
+                ' Value2が取得できない場合はValueを使用
+                Err.Clear
+                cellValue4 = CStr(cell4.Value)
+            End If
+            On Error GoTo 0
         End If
         
         ' 紐づけて表示（列番号: 3行目の値 → 4行目の値）
@@ -160,6 +202,9 @@ For Each fileName In excelFiles.Keys
             Err.Clear
             Exit For
         End If
+        
+        Set cell3 = Nothing
+        Set cell4 = Nothing
     Next col
     On Error GoTo 0
     
@@ -194,6 +239,8 @@ If Not excel Is Nothing Then
         wbTemp.Close SaveChanges:=False
     Next
     
+    excel.ScreenUpdating = True
+    excel.EnableEvents = True
     excel.Quit
 End If
 Set excel = Nothing
