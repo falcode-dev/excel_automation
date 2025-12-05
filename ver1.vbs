@@ -12,7 +12,7 @@ Dim wb, ws
 Dim row3Data, row4Data
 Dim lastCol, col
 Dim resultMsg, cellValue3, cellValue4
-Dim i, filePath, cell3, cell4
+Dim i, filePath, cell3, cell4, val3, val4
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -94,7 +94,6 @@ For Each fileName In excelFiles.Keys
     On Error Resume Next
     
     ' Excelファイルを開く（日本語パス対応）
-    Dim filePath
     filePath = excelFiles(fileName)
     ' パスを正しく処理（日本語を含む場合も対応）
     Set wb = excel.Workbooks.Open(filePath, ReadOnly:=True, UpdateLinks:=0)
@@ -155,7 +154,6 @@ For Each fileName In excelFiles.Keys
         If Not IsEmpty(cell3.Value) Then
             ' 日本語対応：Value2プロパティを優先的に使用（文字化けを防ぐ）
             On Error Resume Next
-            Dim val3
             val3 = cell3.Value2
             If Err.Number = 0 Then
                 ' Value2が取得できた場合
@@ -176,7 +174,6 @@ For Each fileName In excelFiles.Keys
         ' 4行目の値を取得（日本語対応：Value2プロパティを優先的に使用）
         If Not IsEmpty(cell4.Value) Then
             On Error Resume Next
-            Dim val4
             val4 = cell4.Value2
             If Err.Number = 0 Then
                 ' Value2が取得できた場合
