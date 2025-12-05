@@ -20,7 +20,7 @@ Dim convertedValue, lowerVal
 Dim primaryNameAttribute, ws2, colIndexDict2
 Dim logicalNameCol, lastRow2, row, foundRow
 Dim attributeMappingDict, attrFieldName, attrCellAddr, attrValue
-Dim rowLogicalName
+Dim rowLogicalName, pluralDisplayName
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -188,6 +188,24 @@ For Each file In folder.Files
                             ' セットした値を赤文字にする
                             wsTable.Cells(rowNum, colNum).Font.Color = RGB(255, 0, 0)
                         Next
+                        
+                        ' ▼ Plural Display Nameの値をE5にセット
+                        Dim pluralDisplayName
+                        pluralDisplayName = ""
+                        If colIndexDict.Exists("plural display name") Then
+                            On Error Resume Next
+                            pluralDisplayName = ws.Cells(4, colIndexDict("plural display name")).Value2
+                            If Err.Number <> 0 Then
+                                pluralDisplayName = ""
+                                Err.Clear
+                            End If
+                            On Error GoTo 0
+                        End If
+                        
+                        If pluralDisplayName <> "" Then
+                            wsTable.Cells(5, 5).Value = pluralDisplayName
+                            wsTable.Cells(5, 5).Font.Color = RGB(255, 0, 0)
+                        End If
                         
                         ' ▼ PrimaryNameAttributeの値を取得（シート1の3行目から）
                         primaryNameAttribute = ""
