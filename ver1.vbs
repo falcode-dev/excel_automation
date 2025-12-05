@@ -165,10 +165,8 @@ For Each file In folder.Files
                             End If
                             
                             ' True/Falseを変換（True → ✓、False → -）
-                            Dim convertedValue
                             convertedValue = fieldValue
                             If IsNumeric(fieldValue) = False Then
-                                Dim lowerVal
                                 lowerVal = LCase(Trim(CStr(fieldValue)))
                                 If lowerVal = "true" Then
                                     convertedValue = ChrW(10003) ' ✓
