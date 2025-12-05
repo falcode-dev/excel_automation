@@ -26,6 +26,7 @@ Dim e13Value, wsField
 Dim fieldMappingDict, outputRow, fieldValue2, outputCol
 Dim additionalDataValue, targetsValue, formatValue, targetsPos, formatPos
 Dim lowerFormatValue, attributeTypeValue
+Dim attrTypeConverted, minValue, maxValue, optionsValue, defaultValue, targetValue, statesValue
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -484,7 +485,7 @@ For Each file In folder.Files
                                         wsField.Cells(outputRow, 22).Font.Color = RGB(255, 0, 0)
                                     End If
                                     
-                                    ' Format:の処理
+                                    ' Format:の処理（J8 = 10列目、8行目にセット）
                                     formatPos = InStr(1, additionalDataValue, "Format:", vbTextCompare)
                                     If formatPos > 0 Then
                                         formatValue = Mid(additionalDataValue, formatPos + Len("Format:"))
@@ -502,30 +503,150 @@ For Each file In folder.Files
                                             formatValue = "日付と時刻 - 日付のみ"
                                         End If
                                         
-                                        ' どこにセットするか確認が必要ですが、一旦V列の次の列（W列 = 23列目）にセット
-                                        ' 必要に応じて列番号を調整してください
-                                        wsField.Cells(outputRow, 23).Value = formatValue
-                                        wsField.Cells(outputRow, 23).Font.Color = RGB(255, 0, 0)
+                                        ' J8（10列目、8行目）にセット
+                                        wsField.Cells(8, 10).Value = formatValue
+                                        wsField.Cells(8, 10).Font.Color = RGB(255, 0, 0)
+                                    End If
+                                    
+                                    ' ▼ Attribute Typeの変換とAdditional dataの処理
+                                    Dim attrTypeConverted, minValue, maxValue, optionsValue, defaultValue, targetValue, statesValue
+                                    attrTypeConverted = ""
+                                    minValue = ""
+                                    maxValue = ""
+                                    optionsValue = ""
+                                    defaultValue = ""
+                                    targetValue = ""
+                                    statesValue = ""
+                                    
+                                    ' Attribute Typeの値を取得
+                                    If colIndexDict2.Exists("attribute type") Then
+                                        On Error Resume Next
+                                        attributeTypeValue = CStr(ws2.Cells(row, colIndexDict2("attribute type")).Value2)
+                                        If Err.Number <> 0 Then
+                                            attributeTypeValue = ""
+                                            Err.Clear
+                                        End If
+                                        On Error GoTo 0
+                                        
+                                        ' Attribute Typeの変換
+                                        lowerVal = LCase(Trim(attributeTypeValue))
+                                        Select Case lowerVal
+                                            Case "bigint"
+                                                attrTypeConverted = "数値 - 整数(Int)"
+                                                ' Minimum value/Maximum valueを抽出
+                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value")
+                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value")
+                                            Case "choice"
+                                                attrTypeConverted = "選択肢"
+                                                optionsValue = ExtractValueFromAdditionalData(additionalDataValue, "Options:")
+                                                defaultValue = ExtractValueFromAdditionalData(additionalDataValue, "Default:")
+                                                If LCase(Trim(defaultValue)) = "n/a" Then
+                                                    defaultValue = "なし"
+                                                End If
+                                            Case "choices"
+                                                attrTypeConverted = "選択肢(複数)"
+                                                optionsValue = ExtractValueFromAdditionalData(additionalDataValue, "Options:")
+                                                defaultValue = ExtractValueFromAdditionalData(additionalDataValue, "Default:")
+                                                If LCase(Trim(defaultValue)) = "n/a" Then
+                                                    defaultValue = "なし"
+                                                End If
+                                            Case "currency"
+                                                attrTypeConverted = "通貨"
+                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value")
+                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value")
+                                            Case "decimal"
+                                                attrTypeConverted = "数値 - 少数(10進数)"
+                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value")
+                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value")
+                                            Case "double"
+                                                attrTypeConverted = "数値 - 浮動小数点数"
+                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value")
+                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value")
+                                            Case "multiline text"
+                                                attrTypeConverted = "複数行テキスト - プレーン"
+                                            Case "owner"
+                                                attrTypeConverted = "所有者"
+                                                targetValue = ExtractValueFromAdditionalData(additionalDataValue, "Target:")
+                                            Case "state"
+                                                attrTypeConverted = "状態"
+                                                statesValue = ExtractValueFromAdditionalData(additionalDataValue, "States:")
+                                            Case "status"
+                                                attrTypeConverted = "ステータス"
+                                                statesValue = ExtractValueFromAdditionalData(additionalDataValue, "States:")
+                                            Case "text"
+                                                attrTypeConverted = "1行テキスト - プレーン"
+                                            Case "two options"
+                                                attrTypeConverted = "はい/いいえ"
+                                                optionsValue = ExtractValueFromAdditionalData(additionalDataValue, "Options:")
+                                                defaultValue = ExtractValueFromAdditionalData(additionalDataValue, "Default Value:")
+                                            Case "uniqueidentifier"
+                                                attrTypeConverted = "一意識別子"
+                                            Case "whole number"
+                                                attrTypeConverted = "数値 - 整数(Int)"
+                                                minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value")
+                                                maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value")
+                                            Case Else
+                                                ' Lookupの場合は検索に変換（既存の処理）
+                                                If lowerVal = "lookup" Then
+                                                    attrTypeConverted = "検索"
+                                                Else
+                                                    attrTypeConverted = attributeTypeValue
+                                                End If
+                                        End Select
+                                        
+                                        ' Attribute TypeをJ列（10列目）にセット
+                                        If attrTypeConverted <> "" Then
+                                            wsField.Cells(outputRow, 10).Value = attrTypeConverted
+                                            wsField.Cells(outputRow, 10).Font.Color = RGB(255, 0, 0)
+                                        End If
+                                        
+                                        ' Additional dataの値を各セルにセット
+                                        ' Minimum value → P7（16列目）
+                                        If minValue <> "" Then
+                                            wsField.Cells(outputRow, 16).Value = minValue
+                                            wsField.Cells(outputRow, 16).Font.Color = RGB(255, 0, 0)
+                                        End If
+                                        
+                                        ' Maximum value → O7（15列目）
+                                        If maxValue <> "" Then
+                                            wsField.Cells(outputRow, 15).Value = maxValue
+                                            wsField.Cells(outputRow, 15).Font.Color = RGB(255, 0, 0)
+                                        End If
+                                        
+                                        ' Options: → T7（20列目）
+                                        If optionsValue <> "" Then
+                                            wsField.Cells(outputRow, 20).Value = optionsValue
+                                            wsField.Cells(outputRow, 20).Font.Color = RGB(255, 0, 0)
+                                        End If
+                                        
+                                        ' Default: / Default Value: → U7（21列目）
+                                        If defaultValue <> "" Then
+                                            wsField.Cells(outputRow, 21).Value = defaultValue
+                                            wsField.Cells(outputRow, 21).Font.Color = RGB(255, 0, 0)
+                                        End If
+                                        
+                                        ' Target: → V7（22列目）
+                                        If targetValue <> "" Then
+                                            wsField.Cells(outputRow, 22).Value = targetValue
+                                            wsField.Cells(outputRow, 22).Font.Color = RGB(255, 0, 0)
+                                        End If
+                                        
+                                        ' States: → T7（20列目）
+                                        If statesValue <> "" Then
+                                            wsField.Cells(outputRow, 20).Value = statesValue
+                                            wsField.Cells(outputRow, 20).Font.Color = RGB(255, 0, 0)
+                                        End If
+                                        
+                                        ' Multiline Text/Textの場合はAdditional data全体をAK7（37列目）にセット
+                                        If lowerVal = "multiline text" Or lowerVal = "text" Then
+                                            If additionalDataValue <> "" Then
+                                                wsField.Cells(outputRow, 37).Value = additionalDataValue
+                                                wsField.Cells(outputRow, 37).Font.Color = RGB(255, 0, 0)
+                                            End If
+                                        End If
                                     End If
                                 End If
                                 
-                                ' ▼ Attribute TypeがLookupの場合は検索に変換
-                                attributeTypeValue = ""
-                                If colIndexDict2.Exists("attribute type") Then
-                                    On Error Resume Next
-                                    attributeTypeValue = CStr(ws2.Cells(row, colIndexDict2("attribute type")).Value2)
-                                    If Err.Number <> 0 Then
-                                        attributeTypeValue = ""
-                                        Err.Clear
-                                    End If
-                                    On Error GoTo 0
-                                    
-                                    If LCase(Trim(attributeTypeValue)) = "lookup" Then
-                                        ' Attribute Typeの列（J列 = 10列目）に「検索」をセット
-                                        wsField.Cells(outputRow, 10).Value = "検索"
-                                        wsField.Cells(outputRow, 10).Font.Color = RGB(255, 0, 0)
-                                    End If
-                                End If
                                 
                                 outputRow = outputRow + 1
                             Next
@@ -591,3 +712,48 @@ excel.Quit
 Set excel = Nothing
 
 MsgBox "処理が完了しました。", vbInformation, "完了"
+
+'────────────────────────────────────────
+'  関数：Additional dataから値を抽出
+'────────────────────────────────────────
+Function ExtractValueFromAdditionalData(additionalData As String, keyword As String) As String
+    Dim pos, valueStart, valueEnd, nextKeywordPos
+    Dim result, tempValue
+    Dim keywords
+    Dim i, keywordPos, minPos
+    
+    result = ""
+    pos = InStr(1, additionalData, keyword, vbTextCompare)
+    
+    If pos > 0 Then
+        valueStart = pos + Len(keyword)
+        
+        ' 次のキーワードの位置を探す
+        keywords = Array("Minimum value:", "Maximum value:", "Options:", "Default:", "Default Value:", "Target:", "States:", "Format:", "targets:")
+        minPos = 0
+        
+        For i = 0 To UBound(keywords)
+            keywordPos = InStr(valueStart, additionalData, keywords(i), vbTextCompare)
+            If keywordPos > 0 Then
+                If minPos = 0 Or keywordPos < minPos Then
+                    minPos = keywordPos
+                End If
+            End If
+        Next
+        
+        If minPos > 0 Then
+            tempValue = Mid(additionalData, valueStart, minPos - valueStart)
+        Else
+            tempValue = Mid(additionalData, valueStart)
+        End If
+        
+        ' 改行やスペースを取り除く
+        tempValue = Replace(tempValue, vbCrLf, "")
+        tempValue = Replace(tempValue, vbLf, "")
+        tempValue = Replace(tempValue, vbCr, "")
+        tempValue = Replace(tempValue, " ", "")
+        result = Trim(tempValue)
+    End If
+    
+    ExtractValueFromAdditionalData = result
+End Function
