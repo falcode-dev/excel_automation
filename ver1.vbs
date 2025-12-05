@@ -535,6 +535,11 @@ For Each file In folder.Files
                                         On Error GoTo 0
                                         
                                         ' Attribute Typeの変換
+                                        ' 値の前後の空白と改行を削除して小文字に変換
+                                        attributeTypeValue = Trim(CStr(attributeTypeValue))
+                                        attributeTypeValue = Replace(attributeTypeValue, vbCrLf, "")
+                                        attributeTypeValue = Replace(attributeTypeValue, vbLf, "")
+                                        attributeTypeValue = Replace(attributeTypeValue, vbCr, "")
                                         lowerVal = LCase(Trim(attributeTypeValue))
                                         Select Case lowerVal
                                             Case "bigint"
