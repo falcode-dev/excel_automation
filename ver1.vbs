@@ -96,7 +96,9 @@ For Each fileName In excelFiles.Keys
     ' Excelファイルを開く（日本語パス対応）
     filePath = excelFiles(fileName)
     ' パスを正しく処理（日本語を含む場合も対応）
-    Set wb = excel.Workbooks.Open(filePath, ReadOnly:=True, UpdateLinks:=0)
+    ' VBSでは名前付き引数は使えないため、位置引数で指定
+    ' Workbooks.Open(FileName, UpdateLinks, ReadOnly, ...)
+    Set wb = excel.Workbooks.Open(filePath, 0, True)
     
     If Err.Number <> 0 Then
         Dim openErrMsg
