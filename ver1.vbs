@@ -13,6 +13,9 @@ Dim row3Data, row4Data
 Dim lastCol, col
 Dim resultMsg, cellValue3, cellValue4
 Dim i, filePath, cell3, cell4, val3, val4
+Dim errorMsg, nonExcelFile, openErrMsg
+Dim processedCount, errOccurred
+Dim wbTemp
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -51,11 +54,9 @@ Next
 
 ' ▼ Excel以外のファイルがある場合はエラー
 If nonExcelFiles.Count > 0 Then
-    Dim errorMsg
     errorMsg = "フォルダ内にExcel以外のファイルが含まれています。" & vbCrLf & vbCrLf
     errorMsg = errorMsg & "Excel以外のファイル:" & vbCrLf
     
-    Dim nonExcelFile
     For Each nonExcelFile In nonExcelFiles.Keys
         errorMsg = errorMsg & "  - " & nonExcelFile & " (" & nonExcelFiles(nonExcelFile) & ")" & vbCrLf
     Next
@@ -80,11 +81,7 @@ excel.EnableEvents = False
 excel.ScreenUpdating = False
 
 ' ▼ 各Excelファイルを処理
-Dim processedCount
 processedCount = 0
-
-' ▼ エラーハンドリング用の変数
-Dim errOccurred
 errOccurred = False
 
 For Each fileName In excelFiles.Keys
@@ -101,7 +98,6 @@ For Each fileName In excelFiles.Keys
     Set wb = excel.Workbooks.Open(filePath, 0, True)
     
     If Err.Number <> 0 Then
-        Dim openErrMsg
         openErrMsg = "ファイルを開けませんでした: " & fileName & vbCrLf & "エラー: " & Err.Description
         MsgBox openErrMsg, vbCritical, "エラー"
         Err.Clear
@@ -233,7 +229,6 @@ Next
 On Error Resume Next
 If Not excel Is Nothing Then
     ' 開いているワークブックがあればすべて閉じる
-    Dim wbTemp
     For Each wbTemp In excel.Workbooks
         wbTemp.Close SaveChanges:=False
     Next
