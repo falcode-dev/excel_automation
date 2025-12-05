@@ -181,6 +181,8 @@ For Each file In folder.Files
                             
                             ' 値をセット
                             wsTable.Cells(rowNum, colNum).Value = convertedValue
+                            ' セットした値を赤文字にする
+                            wsTable.Cells(rowNum, colNum).Font.Color = RGB(255, 0, 0)
                         Next
                         
                         ' シート「表紙」のB7に「エンティティ定義書_ID_<DisplayNameの値>_v0.1」をセット
