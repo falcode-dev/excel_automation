@@ -469,7 +469,6 @@ For Each file In folder.Files
                                     On Error GoTo 0
                                     
                                     ' Precision:以降を削除
-                                    Dim precisionPos
                                     precisionPos = InStr(1, additionalDataValue, "Precision:", vbTextCompare)
                                     If precisionPos > 0 Then
                                         additionalDataValue = Left(additionalDataValue, precisionPos - 1)
