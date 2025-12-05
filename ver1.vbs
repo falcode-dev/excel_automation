@@ -585,7 +585,7 @@ For Each file In folder.Files
                                                 attrTypeConverted = "はい/いいえ"
                                                 optionsValue = ExtractValueFromAdditionalData(additionalDataValue, "Options:")
                                                 defaultValue = ExtractValueFromAdditionalData(additionalDataValue, "Default Value:")
-                                            Case "Uniqueidentifier"
+                                            Case "uniqueidentifier"
                                                 attrTypeConverted = "一意識別子"
                                             Case "whole number"
                                                 attrTypeConverted = "数値 - 整数(Int)"
