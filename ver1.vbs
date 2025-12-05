@@ -509,7 +509,6 @@ For Each file In folder.Files
                                     End If
                                     
                                     ' ▼ Attribute Typeの変換とAdditional dataの処理
-                                    Dim attrTypeConverted, minValue, maxValue, optionsValue, defaultValue, targetValue, statesValue
                                     attrTypeConverted = ""
                                     minValue = ""
                                     maxValue = ""
