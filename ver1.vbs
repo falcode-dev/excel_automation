@@ -380,7 +380,6 @@ For Each file In folder.Files
                             For row = 2 To lastRow2
                                 ' 各フィールドの値を取得してセット
                                 For Each fieldName In fieldMappingDict.Keys
-                                    Dim outputCol
                                     outputCol = fieldMappingDict(fieldName)
                                     fieldValue2 = ""
                                     
