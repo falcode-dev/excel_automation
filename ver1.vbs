@@ -229,7 +229,6 @@ For Each file In folder.Files
                                 
                                 For row = 2 To lastRow2
                                     On Error Resume Next
-                                    Dim rowLogicalName
                                     rowLogicalName = Trim(CStr(ws2.Cells(row, logicalNameCol).Value2))
                                     If Err.Number <> 0 Then
                                         rowLogicalName = ""
