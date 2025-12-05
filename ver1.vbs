@@ -16,6 +16,7 @@ Dim outputFileName
 Dim mappingDict, colIndexDict
 Dim fieldName, cellAddr, fieldValue
 Dim rowNum, colNum
+Dim convertedValue, lowerVal
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -163,12 +164,25 @@ For Each file In folder.Files
                                 On Error GoTo 0
                             End If
                             
+                            ' True/Falseを変換（True → ✓、False → -）
+                            Dim convertedValue
+                            convertedValue = fieldValue
+                            If IsNumeric(fieldValue) = False Then
+                                Dim lowerVal
+                                lowerVal = LCase(Trim(CStr(fieldValue)))
+                                If lowerVal = "true" Then
+                                    convertedValue = ChrW(10003) ' ✓
+                                ElseIf lowerVal = "false" Or lowerVal = "" Then
+                                    convertedValue = "-"
+                                End If
+                            End If
+                            
                             ' セルアドレスを解析（例：E5 → 行5、列5）
                             colNum = Asc(UCase(Left(cellAddr, 1))) - 64 ' A=1, B=2, ..., E=5
                             rowNum = CInt(Mid(cellAddr, 2))
                             
                             ' 値をセット
-                            wsTable.Cells(rowNum, colNum).Value = fieldValue
+                            wsTable.Cells(rowNum, colNum).Value = convertedValue
                         Next
                         
                         ' シート「表紙」のB7に「エンティティ定義書_ID_<DisplayNameの値>_v0.1」をセット
