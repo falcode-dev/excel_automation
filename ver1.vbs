@@ -454,7 +454,6 @@ For Each file In folder.Files
                                 Next
                                 
                                 ' ▼ Additional dataの処理
-                                Dim additionalDataValue, targetsValue, formatValue
                                 additionalDataValue = ""
                                 
                                 ' Additional dataの値を取得
