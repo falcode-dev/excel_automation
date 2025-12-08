@@ -149,9 +149,11 @@ For Each file In folder.Files
         filePath = file.Path
         
         ' 前のループで作成されたオブジェクトを解放（メモリリーク防止）
+        On Error Resume Next
         If Not colIndexDict Is Nothing Then
             Set colIndexDict = Nothing
         End If
+        On Error GoTo 0
         dataArr = Array() ' 配列のメモリ解放
         
         On Error Resume Next
