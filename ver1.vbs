@@ -28,6 +28,7 @@ Dim additionalDataValue, targetsValue, formatValue, targetsPos, formatPos
 Dim lowerFormatValue, attributeTypeValue
 Dim attrTypeConverted, minValue, maxValue, optionsValue, defaultValue, targetValue, statesValue
 Dim precisionPos
+Dim formatLabelJP, lastOutputRow
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -65,10 +66,56 @@ If Not fso.FolderExists(outputFolderPath) Then
     fso.CreateFolder outputFolderPath
 End If
 
+' ▼ 共通マッピング（ループの外で一度だけ作成）
+Set mappingDict = CreateObject("Scripting.Dictionary")
+mappingDict.Add "Schema Name", "E9"
+mappingDict.Add "Logical Name", "E10"
+mappingDict.Add "Ownership Type", "E12"
+mappingDict.Add "Change TrackingEnabled", "E23"
+mappingDict.Add "Description", "E7"
+mappingDict.Add "DisplayCollectionName", "E6"
+mappingDict.Add "EntityColor", "E14"
+mappingDict.Add "EntityHelpUrl", "E25"
+mappingDict.Add "EntityHelpUrlEnabled", "E24"
+mappingDict.Add "HasEmailAddresses", "E35"
+mappingDict.Add "HasFeedback", "E37"
+mappingDict.Add "HasNotes", "E8"
+mappingDict.Add "IsActivity", "E30"
+mappingDict.Add "IsAuditEnabled", "E26"
+mappingDict.Add "IsAvailableOffline", "E39"
+mappingDict.Add "IsConnectionsEnabled", "E34"
+mappingDict.Add "IsDocumentManagementEnabled", "E33"
+mappingDict.Add "IsDuplicateDetection Enabled", "E22"
+mappingDict.Add "IsMailMergeEnabled", "E31"
+mappingDict.Add "IsQuickCreateEnabled", "E27"
+mappingDict.Add "IsRetentionEnabled", "E28"
+mappingDict.Add "IsSLAEnabled", "E32"
+mappingDict.Add "IsValidForAdvancedFind", "E38"
+mappingDict.Add "IsValidForQueue", "E40"
+mappingDict.Add "PrimarylmageAttribute", "E15"
+mappingDict.Add "TableType", "E11"
+
+' フィールドマッピング辞書を作成（フィールド名 → 列番号）
+Set fieldMappingDict = CreateObject("Scripting.Dictionary")
+fieldMappingDict.Add "Schema Name", 4    ' D列
+fieldMappingDict.Add "Display Name", 5   ' E列
+fieldMappingDict.Add "Custom Attribute", 7 ' G列
+fieldMappingDict.Add "Attribute Type", 10  ' J列（後で個別処理）
+fieldMappingDict.Add "Type", 11            ' K列
+fieldMappingDict.Add "Required Level", 12  ' L列
+fieldMappingDict.Add "Description", 31     ' AE列
+fieldMappingDict.Add "Audit Enabled", 24   ' X列
+fieldMappingDict.Add "Secured", 25         ' Y列
+fieldMappingDict.Add "ValidFor AdvancedFind", 28 ' AB列
+
 ' ▼ Excel起動
 Set excel = CreateObject("Excel.Application")
 excel.Visible = False
 excel.DisplayAlerts = False
+' 高速化設定
+excel.ScreenUpdating = False
+excel.EnableEvents = False
+excel.Calculation = -4135   ' xlCalculationManual
 
 ' ▼ フォルダ内のExcelファイルを順に処理
 For Each file In folder.Files
@@ -89,35 +136,6 @@ For Each file In folder.Files
             
             ' 1シート目を取得
             Set ws = wb.Sheets(1)
-            
-            ' マッピング辞書を作成（フィールド名 → セルアドレス）
-            Set mappingDict = CreateObject("Scripting.Dictionary")
-            mappingDict.Add "Schema Name", "E9"
-            mappingDict.Add "Logical Name", "E10"
-            mappingDict.Add "Ownership Type", "E12"
-            mappingDict.Add "Change TrackingEnabled", "E23"
-            mappingDict.Add "Description", "E7"
-            mappingDict.Add "DisplayCollectionName", "E6"
-            mappingDict.Add "EntityColor", "E14"
-            mappingDict.Add "EntityHelpUrl", "E25"
-            mappingDict.Add "EntityHelpUrlEnabled", "E24"
-            mappingDict.Add "HasEmailAddresses", "E35"
-            mappingDict.Add "HasFeedback", "E37"
-            mappingDict.Add "HasNotes", "E8"
-            mappingDict.Add "IsActivity", "E30"
-            mappingDict.Add "IsAuditEnabled", "E26"
-            mappingDict.Add "IsAvailableOffline", "E39"
-            mappingDict.Add "IsConnectionsEnabled", "E34"
-            mappingDict.Add "IsDocumentManagementEnabled", "E33"
-            mappingDict.Add "IsDuplicateDetection Enabled", "E22"
-            mappingDict.Add "IsMailMergeEnabled", "E31"
-            mappingDict.Add "IsQuickCreateEnabled", "E27"
-            mappingDict.Add "IsRetentionEnabled", "E28"
-            mappingDict.Add "IsSLAEnabled", "E32"
-            mappingDict.Add "IsValidForAdvancedFind", "E38"
-            mappingDict.Add "IsValidForQueue", "E40"
-            mappingDict.Add "PrimarylmageAttribute", "E15"
-            mappingDict.Add "TableType", "E11"
             
             ' 3行目（ヘッダー行）から列インデックスを作成
             Set colIndexDict = CreateObject("Scripting.Dictionary")
@@ -160,7 +178,7 @@ For Each file In folder.Files
                     If Err.Number = 0 Then
                         On Error GoTo 0
                         
-                        ' マッピングに従って値をセット
+                        ' マッピングに従って値をセット（テーブルシート）
                         For Each fieldName In mappingDict.Keys
                             cellAddr = mappingDict(fieldName)
                             fieldValue = ""
@@ -191,9 +209,8 @@ For Each file In folder.Files
                             colNum = Asc(UCase(Left(cellAddr, 1))) - 64 ' A=1, B=2, ..., E=5
                             rowNum = CInt(Mid(cellAddr, 2))
                             
-                            ' 値をセット
+                            ' 値をセット（ここは件数少ないので個別で赤）
                             wsTable.Cells(rowNum, colNum).Value = convertedValue
-                            ' セットした値を赤文字にする
                             wsTable.Cells(rowNum, colNum).Font.Color = RGB(255, 0, 0)
                         Next
                         
@@ -233,7 +250,7 @@ For Each file In folder.Files
                             On Error GoTo 0
                         End If
                         
-                        ' ▼ シート2から該当行を検索して値をセット
+                        ' ▼ シート2から該当行を検索してテーブルシートに値をセット
                         If primaryNameAttribute <> "" And wb.Sheets.Count >= 2 Then
                             Set ws2 = wb.Sheets(2)
                             
@@ -362,19 +379,6 @@ For Each file In folder.Files
                                 End If
                             Next
                             
-                            ' フィールドマッピング辞書を作成（フィールド名 → 列番号）
-                            Set fieldMappingDict = CreateObject("Scripting.Dictionary")
-                            fieldMappingDict.Add "Schema Name", 4    ' D列
-                            fieldMappingDict.Add "Display Name", 5   ' E列
-                            fieldMappingDict.Add "Custom Attribute", 7 ' G列
-                            fieldMappingDict.Add "Attribute Type", 10  ' J列（後で個別処理）
-                            fieldMappingDict.Add "Type", 11            ' K列
-                            fieldMappingDict.Add "Required Level", 12  ' L列
-                            fieldMappingDict.Add "Description", 31     ' AE列
-                            fieldMappingDict.Add "Audit Enabled", 24   ' X列
-                            fieldMappingDict.Add "Secured", 25         ' Y列
-                            fieldMappingDict.Add "ValidFor AdvancedFind", 28 ' AB列
-                            
                             ' シート2の最終行を取得
                             lastRow2 = ws2.Cells(ws2.Rows.Count, 1).End(-4162).Row ' xlUp
                             
@@ -453,9 +457,8 @@ For Each file In folder.Files
                                             End If
                                         End If
                                         
-                                        ' 値をセット（赤文字）
+                                        ' 値をセット（ここでは値だけ。色は後で一括で赤にする）
                                         wsField.Cells(outputRow, outputCol).Value = convertedValue
-                                        wsField.Cells(outputRow, outputCol).Font.Color = RGB(255, 0, 0)
                                     End If
                                 Next
                                 
@@ -491,13 +494,11 @@ For Each file In folder.Files
                                         targetsValue = Trim(targetsValue)
                                         
                                         wsField.Cells(outputRow, 22).Value = targetsValue
-                                        wsField.Cells(outputRow, 22).Font.Color = RGB(255, 0, 0)
                                     End If
                                 End If
                                 
                                 ' ▼ Format: の処理（DateTime/DateOnly 判定用）
                                 formatValue = ""
-                                Dim formatLabelJP
                                 formatLabelJP = ""
                                 
                                 If additionalDataValue <> "" Then
@@ -622,51 +623,43 @@ For Each file In folder.Files
                                     ' Attribute Type を J列（10列目）にセット
                                     If attrTypeConverted <> "" Then
                                         wsField.Cells(outputRow, 10).Value = attrTypeConverted
-                                        wsField.Cells(outputRow, 10).Font.Color = RGB(255, 0, 0)
                                     End If
                                     
                                     ' Additional data 由来の各種値をセット
                                     ' Minimum value → P列（16列目）
                                     If minValue <> "" Then
                                         wsField.Cells(outputRow, 16).Value = minValue
-                                        wsField.Cells(outputRow, 16).Font.Color = RGB(255, 0, 0)
                                     End If
                                     
                                     ' Maximum value → O列（15列目）
                                     If maxValue <> "" Then
                                         wsField.Cells(outputRow, 15).Value = maxValue
-                                        wsField.Cells(outputRow, 15).Font.Color = RGB(255, 0, 0)
                                     End If
                                     
                                     ' Options: → T列（20列目）
                                     If optionsValue <> "" Then
                                         wsField.Cells(outputRow, 20).Value = optionsValue
-                                        wsField.Cells(outputRow, 20).Font.Color = RGB(255, 0, 0)
                                     End If
                                     
                                     ' Default: / Default Value: → U列（21列目）
                                     If defaultValue <> "" Then
                                         wsField.Cells(outputRow, 21).Value = defaultValue
-                                        wsField.Cells(outputRow, 21).Font.Color = RGB(255, 0, 0)
                                     End If
                                     
                                     ' Target: → V列（22列目）
                                     If targetValue <> "" Then
                                         wsField.Cells(outputRow, 22).Value = targetValue
-                                        wsField.Cells(outputRow, 22).Font.Color = RGB(255, 0, 0)
                                     End If
                                     
                                     ' States: → T列（20列目）
                                     If statesValue <> "" Then
                                         wsField.Cells(outputRow, 20).Value = statesValue
-                                        wsField.Cells(outputRow, 20).Font.Color = RGB(255, 0, 0)
                                     End If
                                     
                                     ' Multiline Text/Text の場合は Additional data 全体を AK列（37列目）にセット
                                     If lowerVal = "multiline text" Or lowerVal = "text" Then
                                         If additionalDataValue <> "" Then
                                             wsField.Cells(outputRow, 37).Value = additionalDataValue
-                                            wsField.Cells(outputRow, 37).Font.Color = RGB(255, 0, 0)
                                         End If
                                     End If
                                 End If
@@ -674,7 +667,14 @@ For Each file In folder.Files
                                 outputRow = outputRow + 1
                             Next
                             
-                            Set fieldMappingDict = Nothing
+                            ' ★フィールドシートの出力範囲を一括で赤文字にする（高速化）
+                            If outputRow > 7 Then
+                                lastOutputRow = outputRow - 1
+                                With wsField.Range("D7:AK" & lastOutputRow)
+                                    .Font.Color = RGB(255, 0, 0)
+                                End With
+                            End If
+                            
                             Set colIndexDict2 = Nothing
                             Set ws2 = Nothing
                         End If
@@ -730,7 +730,13 @@ For Each file In folder.Files
     End If
 Next
 
-' ▼ Excel終了
+' ▼ Excel終了（設定を戻してから Quit）
+On Error Resume Next
+excel.Calculation = -4105   ' xlCalculationAutomatic
+excel.ScreenUpdating = True
+excel.EnableEvents = True
+On Error GoTo 0
+
 excel.Quit
 Set excel = Nothing
 
