@@ -417,10 +417,11 @@ For Each file In folder.Files
                                 outRows = lastRow2 - 1   ' データ行数（2行目〜）
                                 outCols = 37 - startColField + 1 ' D〜AK列
                                 
-                                ' VBScriptでは配列は0ベースだが、1ベースで使うためサイズを+1
-                                ReDim outArr(outRows + 1, outCols + 1)
+                                ' VBScriptの配列は0ベース。Excelに書き込む際は1ベースとして解釈されるため、
+                                ' インデックス1からoutRows、1からoutColsまで使うためにサイズをoutRows、outColsにする
+                                ReDim outArr(outRows, outCols)
                                 
-                                arrRow = 1
+                                arrRow = 0  ' 0ベースで開始（Excelに書き込む際は1ベースとして解釈される）
                                 
                                 For row = 2 To lastRow2
                                     ' 各フィールドの値を取得して outArr にセット（共通処理）
@@ -494,9 +495,9 @@ For Each file In folder.Files
                                                 End If
                                             End If
                                             
-                                            ' outArr にセット
-                                            arrCol = outputCol - startColField + 1
-                                            If arrCol >= 1 And arrCol <= outCols Then
+                                            ' outArr にセット（0ベースのインデックス）
+                                            arrCol = outputCol - startColField
+                                            If arrCol >= 0 And arrCol < outCols Then
                                                 outArr(arrRow, arrCol) = convertedValue
                                             End If
                                         End If
@@ -533,8 +534,8 @@ For Each file In folder.Files
                                             targetsValue = Replace(targetsValue, " ", "")
                                             targetsValue = Trim(targetsValue)
                                             
-                                            arrCol = 22 - startColField + 1 ' V列
-                                            If arrCol >= 1 And arrCol <= outCols Then
+                                            arrCol = 22 - startColField ' V列（0ベース）
+                                            If arrCol >= 0 And arrCol < outCols Then
                                                 outArr(arrRow, arrCol) = targetsValue
                                             End If
                                         End If
@@ -665,8 +666,8 @@ For Each file In folder.Files
                                         
                                         ' Attribute Type を J列（10列目）にセット
                                         If attrTypeConverted <> "" Then
-                                            arrCol = 10 - startColField + 1
-                                            If arrCol >= 1 And arrCol <= outCols Then
+                                            arrCol = 10 - startColField
+                                            If arrCol >= 0 And arrCol < outCols Then
                                                 outArr(arrRow, arrCol) = attrTypeConverted
                                             End If
                                         End If
@@ -674,48 +675,48 @@ For Each file In folder.Files
                                         ' Additional data 由来の各種値をセット
                                         ' Minimum value → P列（16列目）
                                         If minValue <> "" Then
-                                            arrCol = 16 - startColField + 1
-                                            If arrCol >= 1 And arrCol <= outCols Then
+                                            arrCol = 16 - startColField
+                                            If arrCol >= 0 And arrCol < outCols Then
                                                 outArr(arrRow, arrCol) = minValue
                                             End If
                                         End If
                                         
                                         ' Maximum value → O列（15列目）
                                         If maxValue <> "" Then
-                                            arrCol = 15 - startColField + 1
-                                            If arrCol >= 1 And arrCol <= outCols Then
+                                            arrCol = 15 - startColField
+                                            If arrCol >= 0 And arrCol < outCols Then
                                                 outArr(arrRow, arrCol) = maxValue
                                             End If
                                         End If
                                         
                                         ' Options: → T列（20列目）
                                         If optionsValue <> "" Then
-                                            arrCol = 20 - startColField + 1
-                                            If arrCol >= 1 And arrCol <= outCols Then
+                                            arrCol = 20 - startColField
+                                            If arrCol >= 0 And arrCol < outCols Then
                                                 outArr(arrRow, arrCol) = optionsValue
                                             End If
                                         End If
                                         
                                         ' Default: / Default Value: → U列（21列目）
                                         If defaultValue <> "" Then
-                                            arrCol = 21 - startColField + 1
-                                            If arrCol >= 1 And arrCol <= outCols Then
+                                            arrCol = 21 - startColField
+                                            If arrCol >= 0 And arrCol < outCols Then
                                                 outArr(arrRow, arrCol) = defaultValue
                                             End If
                                         End If
                                         
                                         ' Target: → V列（22列目）
                                         If targetValue <> "" Then
-                                            arrCol = 22 - startColField + 1
-                                            If arrCol >= 1 And arrCol <= outCols Then
+                                            arrCol = 22 - startColField
+                                            If arrCol >= 0 And arrCol < outCols Then
                                                 outArr(arrRow, arrCol) = targetValue
                                             End If
                                         End If
                                         
                                         ' States: → T列（20列目）
                                         If statesValue <> "" Then
-                                            arrCol = 20 - startColField + 1
-                                            If arrCol >= 1 And arrCol <= outCols Then
+                                            arrCol = 20 - startColField
+                                            If arrCol >= 0 And arrCol < outCols Then
                                                 outArr(arrRow, arrCol) = statesValue
                                             End If
                                         End If
@@ -723,8 +724,8 @@ For Each file In folder.Files
                                         ' Multiline Text/Text の場合は Additional data 全体を AK列（37列目）にセット
                                         If lowerVal = "multiline text" Or lowerVal = "text" Then
                                             If additionalDataValue <> "" Then
-                                                arrCol = 37 - startColField + 1
-                                                If arrCol >= 1 And arrCol <= outCols Then
+                                                arrCol = 37 - startColField
+                                                If arrCol >= 0 And arrCol < outCols Then
                                                     outArr(arrRow, arrCol) = additionalDataValue
                                                 End If
                                             End If
@@ -735,9 +736,10 @@ For Each file In folder.Files
                                 Next
                                 
                                 ' ★フィールドシートの出力範囲を一括で書き込み＆赤文字にする
+                                ' ExcelのRangeに配列を書き込む際、配列のインデックス0が1行目として解釈される
                                 With wsField
-                                    .Range(.Cells(startRowField, startColField), .Cells(startRowField + outRows - 1, 37)).Value = outArr
-                                    .Range(.Cells(startRowField, startColField), .Cells(startRowField + outRows - 1, 37)).Font.Color = RGB(255, 0, 0)
+                                    .Range(.Cells(startRowField, startColField), .Cells(startRowField + outRows - 1, startColField + outCols - 1)).Value = outArr
+                                    .Range(.Cells(startRowField, startColField), .Cells(startRowField + outRows - 1, startColField + outCols - 1)).Font.Color = RGB(255, 0, 0)
                                 End With
                             End If
                             
