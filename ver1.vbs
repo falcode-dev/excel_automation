@@ -119,7 +119,10 @@ excel.DisplayAlerts = False
 ' 高速化設定
 excel.ScreenUpdating = False
 excel.EnableEvents = False
+' Calculation変更は環境によってエラーになるのでエラー無視で実行
+On Error Resume Next
 excel.Calculation = -4135   ' xlCalculationManual
+On Error GoTo 0
 
 ' ▼ template.xlsx をマスタとして一度だけ開く（読み取り専用）
 On Error Resume Next
@@ -759,7 +762,7 @@ End If
 
 ' ▼ Excel終了（設定を戻してから Quit）
 On Error Resume Next
-excel.Calculation = -4105   ' xlCalculationAutomatic
+excel.Calculation = -4105   ' xlCalculationAutomatic（失敗しても無視）
 excel.ScreenUpdating = True
 excel.EnableEvents = True
 On Error GoTo 0
