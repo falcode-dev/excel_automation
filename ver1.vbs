@@ -112,10 +112,13 @@ fieldMappingDict.Add "ValidFor AdvancedFind", 28 ' AB列
 Set excel = CreateObject("Excel.Application")
 excel.Visible = False
 excel.DisplayAlerts = False
+
 ' 高速化設定
 excel.ScreenUpdating = False
 excel.EnableEvents = False
-excel.Calculation = -4135   ' xlCalculationManual
+On Error Resume Next
+excel.Calculation = -4135   ' xlCalculationManual（失敗しても無視）
+On Error GoTo 0
 
 ' ▼ フォルダ内のExcelファイルを順に処理
 For Each file In folder.Files
@@ -732,7 +735,7 @@ Next
 
 ' ▼ Excel終了（設定を戻してから Quit）
 On Error Resume Next
-excel.Calculation = -4105   ' xlCalculationAutomatic
+excel.Calculation = -4105   ' xlCalculationAutomatic（失敗しても無視）
 excel.ScreenUpdating = True
 excel.EnableEvents = True
 On Error GoTo 0
