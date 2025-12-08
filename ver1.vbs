@@ -415,7 +415,8 @@ For Each file In folder.Files
                                 outRows = lastRow2 - 1   ' データ行数（2行目〜）
                                 outCols = 37 - startColField + 1 ' D〜AK列
                                 
-                                ReDim outArr(1 To outRows, 1 To outCols)
+                                ' VBScriptでは配列は0ベースだが、1ベースで使うためサイズを+1
+                                ReDim outArr(outRows + 1, outCols + 1)
                                 
                                 arrRow = 1
                                 
