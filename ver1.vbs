@@ -541,8 +541,6 @@ For Each file In folder.Files
                                         attributeTypeValue = Replace(attributeTypeValue, vbLf, "")
                                         attributeTypeValue = Replace(attributeTypeValue, vbCr, "")
                                         lowerVal = LCase(Trim(attributeTypeValue))
-                                        ' デバッグ用：lowerValの値をログ出力
-                                        WScript.Echo "lowerVal: [" & lowerVal & "] (length: " & Len(lowerVal) & ")"
                                         Select Case lowerVal
                                             Case "bigint"
                                                 attrTypeConverted = "数値 - 整数(Int)"
@@ -599,11 +597,8 @@ For Each file In folder.Files
                                                 minValue = ExtractValueFromAdditionalData(additionalDataValue, "Minimum value:")
                                                 maxValue = ExtractValueFromAdditionalData(additionalDataValue, "Maximum value:")
                                             Case Else
-                                                ' uniqueidentifierの柔軟なマッチング（空白や特殊文字を考慮）
-                                                If InStr(lowerVal, "uniqueidentifier") > 0 Then
-                                                    attrTypeConverted = "一意識別子"
                                                 ' Lookupの場合は検索に変換（既存の処理）
-                                                ElseIf lowerVal = "lookup" Then
+                                                If lowerVal = "lookup" Then
                                                     attrTypeConverted = "検索"
                                                 Else
                                                     attrTypeConverted = attributeTypeValue
