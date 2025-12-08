@@ -367,7 +367,7 @@ For Each file In folder.Files
                             fieldMappingDict.Add "Schema Name", 4    ' D列
                             fieldMappingDict.Add "Display Name", 5   ' E列
                             fieldMappingDict.Add "Custom Attribute", 7 ' G列
-                            fieldMappingDict.Add "Attribute Type", 10  ' J列（※後続の専用ロジックで出力）
+                            fieldMappingDict.Add "Attribute Type", 10  ' J列（後で個別処理）
                             fieldMappingDict.Add "Type", 11            ' K列
                             fieldMappingDict.Add "Required Level", 12  ' L列
                             fieldMappingDict.Add "Description", 31     ' AE列
@@ -386,81 +386,77 @@ For Each file In folder.Files
                                 For Each fieldName In fieldMappingDict.Keys
                                     outputCol = fieldMappingDict(fieldName)
                                     
-                                    ' Attribute Type はここでは出力せず、後続の専用ロジックで処理する
-                                    If fieldName = "Attribute Type" Then
-                                        GoTo SkipCommonWrite
-                                    End If
-                                    
-                                    fieldValue2 = ""
-                                    
-                                    ' 列インデックスから値を取得
-                                    If colIndexDict2.Exists(LCase(fieldName)) Then
-                                        On Error Resume Next
-                                        fieldValue2 = ws2.Cells(row, colIndexDict2(LCase(fieldName))).Value2
-                                        If Err.Number <> 0 Then
-                                            fieldValue2 = ""
-                                            Err.Clear
-                                        End If
-                                        On Error GoTo 0
-                                    End If
-                                    
-                                    ' フィールドごとの変換処理（空の値は空のまま）
-                                    convertedValue = fieldValue2
-                                    
-                                    ' 空の値の場合は変換せずに空のまま
-                                    If fieldValue2 = "" Or IsEmpty(fieldValue2) Then
-                                        convertedValue = ""
-                                    ElseIf IsNumeric(fieldValue2) = False Then
-                                        lowerVal = LCase(Trim(CStr(fieldValue2)))
+                                    ' Attribute Type はここでは書き込まず、後続の専用処理で書く
+                                    If fieldName <> "Attribute Type" Then
+                                        fieldValue2 = ""
                                         
-                                        ' Custom Attributeの変換（True → カスタム、False → 標準）
-                                        If fieldName = "Custom Attribute" Then
-                                            If lowerVal = "true" Then
-                                                convertedValue = "カスタム"
-                                            ElseIf lowerVal = "false" Then
-                                                convertedValue = "標準"
+                                        ' 列インデックスから値を取得
+                                        If colIndexDict2.Exists(LCase(fieldName)) Then
+                                            On Error Resume Next
+                                            fieldValue2 = ws2.Cells(row, colIndexDict2(LCase(fieldName))).Value2
+                                            If Err.Number <> 0 Then
+                                                fieldValue2 = ""
+                                                Err.Clear
                                             End If
-                                        ' Typeの変換（Simple → シンプル、Calculated → 計算、Rollup → ロールアップ）
-                                        ElseIf fieldName = "Type" Then
-                                            Select Case lowerVal
-                                                Case "simple"
-                                                    convertedValue = "シンプル"
-                                                Case "calculated"
-                                                    convertedValue = "計算"
-                                                Case "rollup"
-                                                    convertedValue = "ロールアップ"
-                                                Case Else
-                                                    convertedValue = fieldValue2
-                                            End Select
-                                        ' Required Levelの変換（None → 任意、ApplicationRequired → 必須項目、Recommended → 推奨項目）
-                                        ElseIf fieldName = "Required Level" Then
-                                            Select Case lowerVal
-                                                Case "none"
-                                                    convertedValue = "任意"
-                                                Case "applicationrequired"
-                                                    convertedValue = "システム要求"
-                                                Case "systemrequired"
-                                                    convertedValue = "必須項目"
-                                                Case "recommended"
-                                                    convertedValue = "推奨項目"
-                                                Case Else
-                                                    convertedValue = fieldValue2
-                                            End Select
-                                        ' その他のTrue/FalseはTRUE/FALSEに変換（シート「フィールド」用）
-                                        Else
-                                            If lowerVal = "true" Then
-                                                convertedValue = "TRUE"
-                                            ElseIf lowerVal = "false" Then
-                                                convertedValue = "FALSE"
+                                            On Error GoTo 0
+                                        End If
+                                        
+                                        ' フィールドごとの変換処理（空の値は空のまま）
+                                        convertedValue = fieldValue2
+                                        
+                                        ' 空の値の場合は変換せずに空のまま
+                                        If fieldValue2 = "" Or IsEmpty(fieldValue2) Then
+                                            convertedValue = ""
+                                        ElseIf IsNumeric(fieldValue2) = False Then
+                                            lowerVal = LCase(Trim(CStr(fieldValue2)))
+                                            
+                                            ' Custom Attributeの変換（True → カスタム、False → 標準）
+                                            If fieldName = "Custom Attribute" Then
+                                                If lowerVal = "true" Then
+                                                    convertedValue = "カスタム"
+                                                ElseIf lowerVal = "false" Then
+                                                    convertedValue = "標準"
+                                                End If
+                                            ' Typeの変換（Simple → シンプル、Calculated → 計算、Rollup → ロールアップ）
+                                            ElseIf fieldName = "Type" Then
+                                                Select Case lowerVal
+                                                    Case "simple"
+                                                        convertedValue = "シンプル"
+                                                    Case "calculated"
+                                                        convertedValue = "計算"
+                                                    Case "rollup"
+                                                        convertedValue = "ロールアップ"
+                                                    Case Else
+                                                        convertedValue = fieldValue2
+                                                End Select
+                                            ' Required Levelの変換
+                                            ElseIf fieldName = "Required Level" Then
+                                                Select Case lowerVal
+                                                    Case "none"
+                                                        convertedValue = "任意"
+                                                    Case "applicationrequired"
+                                                        convertedValue = "システム要求"
+                                                    Case "systemrequired"
+                                                        convertedValue = "必須項目"
+                                                    Case "recommended"
+                                                        convertedValue = "推奨項目"
+                                                    Case Else
+                                                        convertedValue = fieldValue2
+                                                End Select
+                                            ' その他のTrue/FalseはTRUE/FALSEに変換
+                                            Else
+                                                If lowerVal = "true" Then
+                                                    convertedValue = "TRUE"
+                                                ElseIf lowerVal = "false" Then
+                                                    convertedValue = "FALSE"
+                                                End If
                                             End If
                                         End If
+                                        
+                                        ' 値をセット（赤文字）
+                                        wsField.Cells(outputRow, outputCol).Value = convertedValue
+                                        wsField.Cells(outputRow, outputCol).Font.Color = RGB(255, 0, 0)
                                     End If
-                                    
-                                    ' 値をセット（赤文字）
-                                    wsField.Cells(outputRow, outputCol).Value = convertedValue
-                                    wsField.Cells(outputRow, outputCol).Font.Color = RGB(255, 0, 0)
-                                    
-SkipCommonWrite:
                                 Next
                                 
                                 ' ▼ Additional data の取得（Precision: 以降は削除）
@@ -494,7 +490,6 @@ SkipCommonWrite:
                                         targetsValue = Replace(targetsValue, " ", "")
                                         targetsValue = Trim(targetsValue)
                                         
-                                        ' V列（22列目）にセット
                                         wsField.Cells(outputRow, 22).Value = targetsValue
                                         wsField.Cells(outputRow, 22).Font.Color = RGB(255, 0, 0)
                                     End If
@@ -523,7 +518,7 @@ SkipCommonWrite:
                                         ElseIf InStr(lowerFormatValue, "dateonly") > 0 Then
                                             formatLabelJP = "日付と時刻 - 日付のみ"
                                         Else
-                                            ' それ以外の場合はそのまま出す
+                                            ' その他はそのまま保持
                                             formatLabelJP = formatValue
                                         End If
                                     End If
