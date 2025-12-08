@@ -1,4 +1,3 @@
-```vbscript
 Option Explicit
 
 '────────────────────────────────────────
@@ -389,11 +388,14 @@ For Each file In folder.Files
                                 ' 出力用配列作成（行数 = データ行数, 列数 = D～AK）
                                 outRows = rCount - 1
                                 outCols = 37 - 4 + 1   ' D(4)～AK(37)
-                                ReDim outData(1 To outRows, 1 To outCols)
                                 
-                                ' 行処理のタイムアウトチェック用
-                                startTime = Timer
-                                outRowIndex = 1
+                                ' 配列サイズのチェック
+                                If outRows > 0 And outCols > 0 Then
+                                    ReDim outData(1 To outRows, 1 To outCols)
+                                    
+                                    ' 行処理のタイムアウトチェック用
+                                    startTime = Timer
+                                    outRowIndex = 1
                                 
                                 For srcRow = 2 To rCount
                                     ' タイムアウトチェック
@@ -688,6 +690,7 @@ For Each file In folder.Files
                                         .Font.Color = RGB(255, 0, 0)
                                     End With
                                 End If
+                                End If ' outRows > 0 And outCols > 0
                             End If ' lastRow2 > 1
                             
                             Set colIndexDict2 = Nothing
@@ -802,4 +805,3 @@ Function ExtractValueFromAdditionalData(additionalData, keyword)
     
     ExtractValueFromAdditionalData = result
 End Function
-```
