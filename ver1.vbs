@@ -146,6 +146,12 @@ For Each file In folder.Files
     If fileExt = "xlsx" Or fileExt = "xls" Or fileExt = "xlsm" Or fileExt = "xlsb" Then
         filePath = file.Path
         
+        ' 前のループで作成されたオブジェクトを解放（メモリリーク防止）
+        If Not colIndexDict Is Nothing Then
+            Set colIndexDict = Nothing
+        End If
+        dataArr = Array() ' 配列のメモリ解放
+        
         On Error Resume Next
         ' Excelファイルを開く（読み取り専用）
         Set wb = excel.Workbooks.Open(filePath, 0, True)
@@ -701,6 +707,8 @@ For Each file In folder.Files
                             
                             Set colIndexDict2 = Nothing
                             Set ws2 = Nothing
+                            ' dataArr配列のメモリ解放
+                            dataArr = Array()
                         End If
                         
                         ' シート「表紙」のB7に「エンティティ定義書_ID_<DisplayNameの値>_v0.1」をセット
@@ -750,6 +758,11 @@ For Each file In folder.Files
             MsgBox "ファイルを開けませんでした: " & fileName & vbCrLf & "エラー: " & Err.Description, vbCritical, "エラー"
             Err.Clear
             On Error GoTo 0
+        End If
+        
+        ' 各ファイル処理後にcolIndexDictを解放（メモリリーク防止）
+        If Not colIndexDict Is Nothing Then
+            Set colIndexDict = Nothing
         End If
     End If
 Next
