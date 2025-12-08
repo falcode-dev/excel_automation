@@ -377,7 +377,7 @@ For Each file In folder.Files
                             
                             If lastRow2 > 1 Then
                                 Dim srcData, rCount, cCount
-                                Dim outRows, outCols, outData
+                                Dim outRows, outCols
                                 Dim srcRow, outRowIndex
                                 
                                 ' シート2のデータ範囲を一括取得（1行目ヘッダー＋データ行）
@@ -386,12 +386,13 @@ For Each file In folder.Files
                                 cCount = UBound(srcData, 2)
                                 
                                 ' 出力用配列作成（行数 = データ行数, 列数 = D～AK）
-                                outRows = rCount - 1
-                                outCols = 37 - 4 + 1   ' D(4)～AK(37)
+                                outRows = CLng(rCount - 1)
+                                outCols = CLng(37 - 4 + 1)   ' D(4)～AK(37)
                                 
                                 ' 配列サイズのチェック
                                 If outRows > 0 And outCols > 0 Then
-                                    ReDim outData(1 To outRows, 1 To outCols)
+                                    Dim outData
+                                    ReDim outData(1 To CInt(outRows), 1 To CInt(outCols))
                                     
                                     ' 行処理のタイムアウトチェック用
                                     startTime = Timer
@@ -681,7 +682,7 @@ For Each file In folder.Files
                                 
                                 If finalRows > 0 Then
                                     If finalRows <> outRows Then
-                                        ReDim Preserve outData(1 To finalRows, 1 To outCols)
+                                        ReDim Preserve outData(1 To CInt(finalRows), 1 To CInt(outCols))
                                     End If
                                     
                                     ' ★フィールドシートの出力範囲を一括で書き込み＆赤文字にする（高速化）
