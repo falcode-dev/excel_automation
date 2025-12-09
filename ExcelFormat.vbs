@@ -253,89 +253,88 @@ For Each file In folder.Files
                             If row >= deleteStartRow Then
                                 emptyRows.Add arrRow, row
                                 arrRow = arrRow + 1
-                                GoTo NextRow
-                            End If
-                            
-                            ' ▼ D列以降（D列=4列目からAK列=37列目まで）に値があるかチェック
-                            ' ※B列（2列目）の値の有無は無視（チェック対象外）
-                            hasValue = False
-                            On Error Resume Next
-                            ' D列（4列目）からAK列（37列目）までチェック（B列は除外）
-                            For col = 4 To 37
-                                If maxCol >= col And arrRow + 1 <= maxRow Then
-                                    ' セルの値をチェック
-                                    Dim cellData2
-                                    cellData2 = dataArr(arrRow + 1, col)
-                                    
-                                    ' 値があるかどうかを判定
-                                    If Not IsEmpty(cellData2) Then
-                                        ' 数値0やFalseなどの値も「値がある」と判定
-                                        If IsNumeric(cellData2) Then
-                                            ' 数値の場合は値があると判定（0も値として扱う）
-                                            hasValue = True
-                                            Exit For
-                                        ElseIf VarType(cellData2) = 11 Then
-                                            ' Boolean型の場合（True/False）
-                                            hasValue = True
-                                            Exit For
-                                        Else
-                                            ' 文字列の場合、空白文字以外は値があると判定
-                                            Dim cellValue2
-                                            cellValue2 = Trim(CStr(cellData2))
-                                            If cellValue2 <> "" Then
+                            Else
+                                ' ▼ D列以降（D列=4列目からAK列=37列目まで）に値があるかチェック
+                                ' ※B列（2列目）の値の有無は無視（チェック対象外）
+                                hasValue = False
+                                On Error Resume Next
+                                ' D列（4列目）からAK列（37列目）までチェック（B列は除外）
+                                For col = 4 To 37
+                                    If maxCol >= col And arrRow + 1 <= maxRow Then
+                                        ' セルの値をチェック
+                                        Dim cellData2
+                                        cellData2 = dataArr(arrRow + 1, col)
+                                        
+                                        ' 値があるかどうかを判定
+                                        If Not IsEmpty(cellData2) Then
+                                            ' 数値0やFalseなどの値も「値がある」と判定
+                                            If IsNumeric(cellData2) Then
+                                                ' 数値の場合は値があると判定（0も値として扱う）
                                                 hasValue = True
                                                 Exit For
+                                            ElseIf VarType(cellData2) = 11 Then
+                                                ' Boolean型の場合（True/False）
+                                                hasValue = True
+                                                Exit For
+                                            Else
+                                                ' 文字列の場合、空白文字以外は値があると判定
+                                                Dim cellValue2
+                                                cellValue2 = Trim(CStr(cellData2))
+                                                If cellValue2 <> "" Then
+                                                    hasValue = True
+                                                    Exit For
+                                                End If
                                             End If
                                         End If
                                     End If
-                                End If
-                                Err.Clear
-                            Next
-                            On Error GoTo 0
-                            
-                            ' D列以降に値がない行は削除対象
-                            If Not hasValue Then
-                                emptyRows.Add arrRow, row
-                            Else
-                                ' D列以降に値がある行は処理対象
-                                On Error Resume Next
-                                gValue = ""
-                                If maxCol >= 7 And arrRow + 1 <= maxRow Then  ' G列は7列目
-                                    gValue = Trim(CStr(dataArr(arrRow + 1, 7)))  ' G列（7列目）
-                                    If Err.Number <> 0 Or IsEmpty(dataArr(arrRow + 1, 7)) Then
-                                        gValue = ""
-                                        Err.Clear
-                                    End If
-                                End If
+                                    Err.Clear
+                                Next
                                 On Error GoTo 0
                                 
-                                ' G列に値がある場合、C列に "proto_" をセット（既存の値がない場合のみ）
-                                If gValue <> "" Then
+                                ' D列以降に値がない行は削除対象
+                                If Not hasValue Then
+                                    emptyRows.Add arrRow, row
+                                Else
+                                    ' D列以降に値がある行は処理対象
                                     On Error Resume Next
-                                    If maxCol >= 3 And arrRow + 1 <= maxRow Then  ' C列は3列目
-                                        cValue = Trim(CStr(dataArr(arrRow + 1, 3)))
-                                        If Err.Number <> 0 Or cValue = "" Or IsEmpty(dataArr(arrRow + 1, 3)) Then
-                                            dataArr(arrRow + 1, 3) = "proto_"
+                                    gValue = ""
+                                    If maxCol >= 7 And arrRow + 1 <= maxRow Then  ' G列は7列目
+                                        gValue = Trim(CStr(dataArr(arrRow + 1, 7)))  ' G列（7列目）
+                                        If Err.Number <> 0 Or IsEmpty(dataArr(arrRow + 1, 7)) Then
+                                            gValue = ""
+                                            Err.Clear
                                         End If
-                                        Err.Clear
                                     End If
                                     On Error GoTo 0
                                     
-                                    ' 「カスタム」と「標準」で分類
-                                    If LCase(gValue) = "カスタム" Then
-                                        customRows.Add customRows.Count, arrRow
-                                    ElseIf LCase(gValue) = "標準" Then
-                                        standardRows.Add standardRows.Count, arrRow
+                                    ' G列に値がある場合、C列に "proto_" をセット（既存の値がない場合のみ）
+                                    If gValue <> "" Then
+                                        On Error Resume Next
+                                        If maxCol >= 3 And arrRow + 1 <= maxRow Then  ' C列は3列目
+                                            cValue = Trim(CStr(dataArr(arrRow + 1, 3)))
+                                            If Err.Number <> 0 Or cValue = "" Or IsEmpty(dataArr(arrRow + 1, 3)) Then
+                                                dataArr(arrRow + 1, 3) = "proto_"
+                                            End If
+                                            Err.Clear
+                                        End If
+                                        On Error GoTo 0
+                                        
+                                        ' 「カスタム」と「標準」で分類
+                                        If LCase(gValue) = "カスタム" Then
+                                            customRows.Add customRows.Count, arrRow
+                                        ElseIf LCase(gValue) = "標準" Then
+                                            standardRows.Add standardRows.Count, arrRow
+                                        Else
+                                            ' その他の値も標準として扱う
+                                            standardRows.Add standardRows.Count, arrRow
+                                        End If
                                     Else
-                                        ' その他の値も標準として扱う
+                                        ' G列が空でもD列以降に値がある場合は標準として扱う
                                         standardRows.Add standardRows.Count, arrRow
                                     End If
-                                Else
-                                    ' G列が空でもD列以降に値がある場合は標準として扱う
-                                    standardRows.Add standardRows.Count, arrRow
                                 End If
-                            End If
-NextRow:
+                            End If  ' row >= deleteStartRow のElseブロックの終了
+                            
                             arrRow = arrRow + 1
                         Next
                     End If
