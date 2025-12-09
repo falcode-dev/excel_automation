@@ -320,7 +320,7 @@ For Each file In folder.Files
                     ' D7を含めた行（7行目）+ 値のある行数 + 1行目から削除
                     ' 例：D7からD10まで値があれば、7 + 4 + 1 = 12行目から削除
                     If dRowCount > 0 Then
-                        deleteStartRow = 7 + dRowCount + 1
+                        deleteStartRow = 7 + dRowCount
                         
                         ' 削除する最終行を計算（シートの最終行まで）
                         deleteEndRow = wsField.Rows.Count
