@@ -21,6 +21,7 @@ Dim i, j, arrRow, colCount, startRow, startCol
 Dim rowData
 Dim emptyStartRow, deleteEndRow, checkRow
 Dim dRowCount, deleteStartRow
+Dim dColArr, dMaxRow
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -280,23 +281,36 @@ For Each file In folder.Files
                     End If
                     On Error GoTo 0
                     
-                    ' D7以降で値がある行数をカウント
+                    ' D7以降で値がある行数をカウント（配列で一括読み込みして高速化）
                     dRowCount = 0
-                    For checkRow = 7 To lastRow
+                    If lastRow >= 7 Then
+                        ' D列の7行目以降を配列で一括読み込み
                         On Error Resume Next
-                        dValue = Trim(CStr(wsField.Cells(checkRow, 4).Value))
-                        If Err.Number = 0 And Not IsEmpty(wsField.Cells(checkRow, 4).Value) And dValue <> "" Then
-                            ' 値がある行をカウント
-                            dRowCount = dRowCount + 1
+                        Dim dColArr
+                        dColArr = wsField.Range(wsField.Cells(7, 4), wsField.Cells(lastRow, 4)).Value
+                        If Err.Number = 0 And IsArray(dColArr) Then
+                            Dim dMaxRow
+                            dMaxRow = UBound(dColArr, 1)
+                            For checkRow = 1 To dMaxRow
+                                On Error Resume Next
+                                dValue = Trim(CStr(dColArr(checkRow, 1)))
+                                If Err.Number = 0 And Not IsEmpty(dColArr(checkRow, 1)) And dValue <> "" Then
+                                    ' 値がある行をカウント
+                                    dRowCount = dRowCount + 1
+                                End If
+                                Err.Clear
+                                On Error GoTo 0
+                            Next
                         End If
                         Err.Clear
                         On Error GoTo 0
-                    Next
+                        dColArr = Array() ' メモリ解放
+                    End If
                     
                     ' D7を含めた行（7行目）+ 値のある行数 + 1行目から削除
                     ' 例：D7からD10まで値があれば、7 + 4 + 1 = 12行目から削除
                     If dRowCount > 0 Then
-                        deleteStartRow = 7 + dRowCount + 1
+                        deleteStartRow = 7 + dRowCount
                         
                         ' 削除する最終行を計算（シートの最終行まで）
                         deleteEndRow = wsField.Rows.Count
@@ -313,7 +327,7 @@ For Each file In folder.Files
                         End If
                     End If
                     
-                    ' ▼ B7以降に =ROW()-6 をセット
+                    ' ▼ B7以降に =ROW()-6 をセット（一括設定で高速化）
                     ' 削除後の最終行を再取得（D列で判定）
                     On Error Resume Next
                     lastRow = wsField.Cells(wsField.Rows.Count, 4).End(-4162).Row ' xlUp (D列=4列目)
@@ -323,17 +337,23 @@ For Each file In folder.Files
                     End If
                     On Error GoTo 0
                     
-                    ' B7から最終行まで =ROW()-6 をセット
+                    ' B7から最終行まで =ROW()-6 を一括でセット（ループではなくRangeで一括設定）
                     If lastRow >= 7 Then
-                        For checkRow = 7 To lastRow
-                            On Error Resume Next
-                            wsField.Cells(checkRow, 2).Formula = "=ROW()-6"
-                            If Err.Number <> 0 Then
-                                Err.Clear
-                            End If
-                            On Error GoTo 0
-                        Next
+                        On Error Resume Next
+                        wsField.Range(wsField.Cells(7, 2), wsField.Cells(lastRow, 2)).Formula = "=ROW()-6"
+                        If Err.Number <> 0 Then
+                            Err.Clear
+                        End If
+                        On Error GoTo 0
                     End If
+                    
+                    ' ▼ J列からW列の幅を自動調整（J列=10列目、W列=23列目）
+                    On Error Resume Next
+                    wsField.Range(wsField.Cells(1, 10), wsField.Cells(1, 23)).Columns.AutoFit
+                    If Err.Number <> 0 Then
+                        Err.Clear
+                    End If
+                    On Error GoTo 0
                 End If
             End If
             
@@ -360,9 +380,20 @@ For Each file In folder.Files
             
             ' ▼ 「保存しますか？」ダイアログを防ぐため、保存前に計算を実行
             ' 計算モードを自動に戻してから計算を実行
+            ' 注意：循環参照がある場合は計算が終わらない可能性がある
+            ' 高速化のため、計算モード変更と計算を最後に一度だけ実行
             On Error Resume Next
             excel.Calculation = -4105   ' xlCalculationAutomatic
+            ' 計算を実行（循環参照がある場合は時間がかかる可能性がある）
+            ' Calculateは同期的に実行されるため、計算が完了するまで待機する
             wb.Calculate   ' ブック全体を計算
+            If Err.Number <> 0 Then
+                ' 計算エラーが発生した場合（循環参照など）は計算モードを手動に戻す
+                excel.Calculation = -4135   ' xlCalculationManual
+                Err.Clear
+            End If
+            ' 保存ダイアログを防ぐため、SavedプロパティをTrueに設定
+            wb.Saved = True
             On Error GoTo 0
             
             ' ファイルを保存
