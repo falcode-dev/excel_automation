@@ -352,6 +352,19 @@ For Each file In folder.Files
                         Err.Clear
                     End If
                     On Error GoTo 0
+                    
+                    ' ▼ 列の幅を個別に設定
+                    On Error Resume Next
+                    wsField.Columns(10).ColumnWidth = 27  ' J列：27
+                    wsField.Columns(11).ColumnWidth = 15  ' K列：15
+                    wsField.Columns(12).ColumnWidth = 15  ' L列：15
+                    wsField.Columns(21).ColumnWidth = 15  ' U列：15
+                    ' T列（20列目）を折り返しに設定
+                    wsField.Columns(20).WrapText = True
+                    If Err.Number <> 0 Then
+                        Err.Clear
+                    End If
+                    On Error GoTo 0
                 End If
             End If
             
