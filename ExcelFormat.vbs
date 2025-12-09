@@ -182,7 +182,15 @@ For Each file In folder.Files
                             maxProcessRows = 10000
                         End If
                         
+                        ' proto_がセットされた行の次の行以降を削除するためのフラグ
+                        Dim protoFound
+                        protoFound = False
+                        
                         For row = startRow To lastRow
+                            ' proto_がセットされた行の次の行以降は処理しない（削除対象）
+                            If protoFound Then
+                                Exit For
+                            End If
                             ' 無限ループ防止：処理行数が上限を超えた場合は終了
                             If arrRow >= maxProcessRows Then
                                 Exit For
@@ -249,6 +257,8 @@ For Each file In folder.Files
                                         cValue = Trim(CStr(dataArr(arrRow + 1, 3)))
                                         If Err.Number <> 0 Or cValue = "" Or IsEmpty(dataArr(arrRow + 1, 3)) Then
                                             dataArr(arrRow + 1, 3) = "proto_"
+                                            ' proto_をセットした行の次の行以降は削除対象
+                                            protoFound = True
                                         End If
                                         Err.Clear
                                     End If
@@ -262,6 +272,11 @@ For Each file In folder.Files
                                     Else
                                         ' その他の値も標準として扱う
                                         standardRows.Add standardRows.Count, arrRow
+                                    End If
+                                    
+                                    ' proto_がセットされた行の次の行以降は処理しない（削除対象）
+                                    If protoFound Then
+                                        Exit For
                                     End If
                                 Else
                                     ' G列が空でもD列以降に値がある場合は標準として扱う
