@@ -15,7 +15,7 @@ Option Explicit
 Dim fso, excel, wb, wsTable, wsField, ws, wsCover
 Dim folderPath, folder, file
 Dim fileName, filePath, fileExt
-Dim lastRow, row, gValue, cValue, dValue
+Dim lastRow, row, gValue, cValue, dValue, lowerGValue
 Dim dataArr, sortedArr, customRows, standardRows, emptyRows
 Dim i, j, arrRow, colCount, startRow, startCol
 Dim rowData
@@ -194,10 +194,16 @@ For Each file In folder.Files
                                 End If
                                 On Error GoTo 0
                                 
-                                ' 「カスタム」と「標準」で分類
-                                If LCase(gValue) = "カスタム" Then
+                                ' 「カスタム」と「標準」で分類（部分一致にも対応）
+                                ' G列の値に「カスタム」が含まれている場合はカスタムとして扱う
+                                ' 「標準」が含まれている場合は標準として扱う
+                                ' 両方含まれている場合はカスタムを優先
+                                lowerGValue = LCase(gValue)
+                                If InStr(lowerGValue, "カスタム") > 0 Then
+                                    ' 「カスタム」が含まれている場合はカスタムとして扱う
                                     customRows.Add customRows.Count, arrRow
-                                ElseIf LCase(gValue) = "標準" Then
+                                ElseIf InStr(lowerGValue, "標準") > 0 Then
+                                    ' 「標準」が含まれている場合は標準として扱う
                                     standardRows.Add standardRows.Count, arrRow
                                 Else
                                     ' その他の値も標準として扱う
