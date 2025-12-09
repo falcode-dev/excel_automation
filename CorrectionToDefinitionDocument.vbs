@@ -14,7 +14,7 @@ Option Explicit
 '    ExcelFormat.vbsを参考にしています
 '────────────────────────────────────────
 
-Dim fso, excel, wb, wsTable, wsField, ws, wsForm, wsView
+Dim fso, excel, wb, wsTable, wsField, ws, wsForm, wsView, wsCover
 Dim folderPath, folder, file
 Dim fileName, filePath, fileExt
 Dim lastRow, lastCol, lastRowP
@@ -25,6 +25,7 @@ Dim i, j
 Dim templateForm, templateView
 Dim dataArr, maxRow, maxCol, arrRow, arrCol
 Dim hasChanges
+Dim wsFormNew, wsViewNew
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -102,24 +103,30 @@ For Each file In folder.Files
         If Not wsView Is Nothing Then
             Set wsView = Nothing
         End If
+        If Not wsCover Is Nothing Then
+            Set wsCover = Nothing
+        End If
         If Not ws Is Nothing Then
             Set ws = Nothing
         End If
         On Error GoTo 0
         
         On Error Resume Next
-        ' Excelファイルを開く
-        Set wb = excel.Workbooks.Open(filePath, 0, False)
+        ' Excelファイルを開く（リンクの更新を無効にする）
+        Set wb = excel.Workbooks.Open(filePath, 0, False, , , , , , , , False, False)
+        ' リンクの更新を無効にする（警告を表示しない）
+        wb.UpdateLinks = 0  ' xlUpdateLinksNever
         
         If Err.Number = 0 Then
             On Error GoTo 0
             
-            ' シート「テーブル」「フィールド」「フォーム」「ビュー」を取得
+            ' シート「テーブル」「フィールド」「フォーム」「ビュー」「表紙」を取得
             On Error Resume Next
             Set wsTable = Nothing
             Set wsField = Nothing
             Set wsForm = Nothing
             Set wsView = Nothing
+            Set wsCover = Nothing
             
             ' シート名で検索
             For Each ws In wb.Sheets
@@ -131,6 +138,8 @@ For Each file In folder.Files
                     Set wsForm = ws
                 ElseIf ws.Name = "ビュー" Then
                     Set wsView = ws
+                ElseIf ws.Name = "表紙" Then
+                    Set wsCover = ws
                 End If
             Next
             
@@ -361,10 +370,46 @@ For Each file In folder.Files
                     End If
                     On Error GoTo 0
                 End If
+                
+                ' ▼ シートの順番を「フィールド」「フォーム」「ビュー」の順にする
+                On Error Resume Next
+                Set wsFormNew = Nothing
+                Set wsViewNew = Nothing
+                
+                ' コピー後の「フォーム」「ビュー」シートを取得
+                For Each ws In wb.Sheets
+                    If ws.Name = "フォーム" And ws.Index > fieldSheetIndex Then
+                        Set wsFormNew = ws
+                    ElseIf ws.Name = "ビュー" And ws.Index > fieldSheetIndex Then
+                        Set wsViewNew = ws
+                    End If
+                Next
+                
+                ' 「フィールド」の直後に「フォーム」を移動
+                If Not wsFormNew Is Nothing And Not wsField Is Nothing Then
+                    wsFormNew.Move , wb.Sheets(fieldSheetIndex)
+                End If
+                
+                ' 「フォーム」の直後に「ビュー」を移動
+                If Not wsViewNew Is Nothing And Not wsFormNew Is Nothing Then
+                    wsViewNew.Move , wb.Sheets(wsFormNew.Index)
+                End If
+                
+                Err.Clear
+                On Error GoTo 0
             End If
             
-            ' 最後に「フィールド」シートをアクティブにしてA1にカーソルをセット
+            ' ▼ 「フィールド」シートのA1にカーソルをセット
             If Not wsField Is Nothing Then
+                wsField.Activate
+                wsField.Range("A1").Select
+            End If
+            
+            ' ▼ 保存前に「表紙」シートのA1にカーソルをセット（保存時のアクティブシートを「表紙」にする）
+            If Not wsCover Is Nothing Then
+                wsCover.Activate
+                wsCover.Range("A1").Select
+            ElseIf Not wsField Is Nothing Then
                 wsField.Activate
                 wsField.Range("A1").Select
             ElseIf Not wsTable Is Nothing Then
@@ -388,9 +433,11 @@ For Each file In folder.Files
             End If
             ' 保存ダイアログを防ぐため、SavedプロパティをTrueに設定
             wb.Saved = True
+            ' リンクの更新を無効にする（保存時の警告を防ぐ）
+            wb.UpdateLinks = 0  ' xlUpdateLinksNever
             On Error GoTo 0
             
-            ' ファイルを保存
+            ' ファイルを保存（リンクの更新を無効にする）
             On Error Resume Next
             wb.Save
             If Err.Number <> 0 Then
@@ -406,6 +453,7 @@ For Each file In folder.Files
             Set wsField = Nothing
             Set wsForm = Nothing
             Set wsView = Nothing
+            Set wsCover = Nothing
             Set ws = Nothing
         Else
             MsgBox "ファイルを開けませんでした: " & fileName & vbCrLf & "エラー: " & Err.Description, vbCritical, "エラー"
