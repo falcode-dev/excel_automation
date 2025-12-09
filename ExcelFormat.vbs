@@ -200,7 +200,7 @@ For Each file In folder.Files
                                     Dim cellData
                                     cellData = dataArr(arrRow + 1, col)
                                     
-                                    ' IsEmptyを先にチェック
+                                    ' 値があるかどうかを判定
                                     If Not IsEmpty(cellData) Then
                                         ' 数値0やFalseなどの値も「値がある」と判定
                                         If IsNumeric(cellData) Then
@@ -221,8 +221,8 @@ For Each file In folder.Files
                                             End If
                                         End If
                                     End If
-                                    Err.Clear
                                 End If
+                                Err.Clear
                             Next
                             On Error GoTo 0
                             
@@ -273,6 +273,8 @@ For Each file In folder.Files
                     End If
                     
                     ' 並び替えたデータを作成（カスタム→標準の順）
+                    ' ※emptyRowsに追加された行はcustomRowsやstandardRowsに追加されないため、
+                    '   totalRowsに含まれず、結果的に削除される（書き戻されない）
                     Dim sortedCount, totalRows
                     totalRows = customRows.Count + standardRows.Count
                     
