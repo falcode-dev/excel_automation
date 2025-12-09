@@ -12,7 +12,7 @@ Option Explicit
 '    ・オブジェクト解放を確実に実行
 '────────────────────────────────────────
 
-Dim fso, excel, wb, wsTable, wsField, ws
+Dim fso, excel, wb, wsTable, wsField, wsCover, ws
 Dim folderPath, folder, file
 Dim fileName, filePath, fileExt
 Dim lastRow, row, gValue, cValue
@@ -85,9 +85,10 @@ For Each file In folder.Files
             fileProcessed = False
             
             On Error Resume Next
-            ' シート「テーブル」と「フィールド」を取得
+            ' シート「テーブル」「フィールド」「表紙」を取得
             Set wsTable = Nothing
             Set wsField = Nothing
+            Set wsCover = Nothing
             
             ' シート名で検索
             For Each ws In wb.Sheets
@@ -95,6 +96,8 @@ For Each file In folder.Files
                     Set wsTable = ws
                 ElseIf ws.Name = "フィールド" Then
                     Set wsField = ws
+                ElseIf ws.Name = "表紙" Then
+                    Set wsCover = ws
                 End If
             Next
             
@@ -186,10 +189,11 @@ For Each file In folder.Files
                             End If
                             
                             ' ▼ D列以降（D列=4列目からAK列=37列目まで）に値があるかチェック
+                            ' ※B列（2列目）の値の有無は無視（チェック対象外）
                             Dim hasValue, col
                             hasValue = False
                             On Error Resume Next
-                            ' D列（4列目）からAK列（37列目）までチェック
+                            ' D列（4列目）からAK列（37列目）までチェック（B列は除外）
                             For col = 4 To 37
                                 If maxCol >= col And arrRow + 1 <= maxRow Then
                                     Dim cellValue
@@ -340,9 +344,12 @@ For Each file In folder.Files
                 MsgBox "シート「フィールド」が見つかりません: " & fileName, vbWarning, "警告"
             End If
             
-            ' 最後に「テーブル」シートをアクティブにしてA1にカーソルを戻す（1枚目にする）
+            ' 最後に「表紙」シートをアクティブにしてA1にカーソルを戻す
             On Error Resume Next
-            If Not wsTable Is Nothing Then
+            If Not wsCover Is Nothing Then
+                wsCover.Activate
+                wsCover.Range("A1").Select
+            ElseIf Not wsTable Is Nothing Then
                 wsTable.Activate
                 wsTable.Range("A1").Select
             ElseIf Not wsField Is Nothing Then
@@ -387,6 +394,9 @@ For Each file In folder.Files
         End If
         If Not wsField Is Nothing Then
             Set wsField = Nothing
+        End If
+        If Not wsCover Is Nothing Then
+            Set wsCover = Nothing
         End If
         If Not ws Is Nothing Then
             Set ws = Nothing
