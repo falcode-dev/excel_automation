@@ -12,7 +12,7 @@ Option Explicit
 '    ・オブジェクト解放を確実に実行
 '────────────────────────────────────────
 
-Dim fso, excel, wb, wsTable, wsField, ws
+Dim fso, excel, wb, wsTable, wsField, ws, wsCover
 Dim folderPath, folder, file
 Dim fileName, filePath, fileExt
 Dim lastRow, row, gValue, cValue, dValue
@@ -70,6 +70,9 @@ For Each file In folder.Files
         If Not wsField Is Nothing Then
             Set wsField = Nothing
         End If
+        If Not wsCover Is Nothing Then
+            Set wsCover = Nothing
+        End If
         If Not ws Is Nothing Then
             Set ws = Nothing
         End If
@@ -82,10 +85,11 @@ For Each file In folder.Files
         If Err.Number = 0 Then
             On Error GoTo 0
             
-            ' シート「テーブル」と「フィールド」を取得
+            ' シート「テーブル」「フィールド」「表紙」を取得
             On Error Resume Next
             Set wsTable = Nothing
             Set wsField = Nothing
+            Set wsCover = Nothing
             
             ' シート名で検索
             For Each ws In wb.Sheets
@@ -93,6 +97,8 @@ For Each file In folder.Files
                     Set wsTable = ws
                 ElseIf ws.Name = "フィールド" Then
                     Set wsField = ws
+                ElseIf ws.Name = "表紙" Then
+                    Set wsCover = ws
                 End If
             Next
             
@@ -340,14 +346,24 @@ For Each file In folder.Files
                 MsgBox "シート「フィールド」が見つかりません: " & fileName, vbWarning, "警告"
             End If
             
-            ' 最後に「テーブル」シートをアクティブにしてA1にカーソルを戻す（1枚目にする）
-            If Not wsTable Is Nothing Then
+            ' 最後に「表紙」シートをアクティブにしてA1にカーソルをセット（1枚目にする）
+            If Not wsCover Is Nothing Then
+                wsCover.Activate
+                wsCover.Range("A1").Select
+            ElseIf Not wsTable Is Nothing Then
                 wsTable.Activate
                 wsTable.Range("A1").Select
             ElseIf Not wsField Is Nothing Then
                 wsField.Activate
                 wsField.Range("A1").Select
             End If
+            
+            ' ▼ 「保存しますか？」ダイアログを防ぐため、保存前に計算を実行
+            ' 計算モードを自動に戻してから計算を実行
+            On Error Resume Next
+            excel.Calculation = -4105   ' xlCalculationAutomatic
+            wb.Calculate   ' ブック全体を計算
+            On Error GoTo 0
             
             ' ファイルを保存
             On Error Resume Next
@@ -363,6 +379,7 @@ For Each file In folder.Files
             Set wb = Nothing
             Set wsTable = Nothing
             Set wsField = Nothing
+            Set wsCover = Nothing
             Set ws = Nothing
         Else
             MsgBox "ファイルを開けませんでした: " & fileName & vbCrLf & "エラー: " & Err.Description, vbCritical, "エラー"
