@@ -26,6 +26,7 @@ Dim templateForm, templateView
 Dim dataArr, maxRow, maxCol, arrRow, arrCol
 Dim hasChanges
 Dim wsFormNew, wsViewNew
+Dim formSheetIndex
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -113,11 +114,16 @@ For Each file In folder.Files
         
         On Error Resume Next
         ' Excelファイルを開く（リンクの更新を無効にする）
-        Set wb = excel.Workbooks.Open(filePath, 0, False, , , , , , , , False, False)
-        ' リンクの更新を無効にする（警告を表示しない）
-        wb.UpdateLinks = 0  ' xlUpdateLinksNever
+        Set wb = excel.Workbooks.Open(filePath, 0, False)
         
         If Err.Number = 0 Then
+            On Error GoTo 0
+            ' リンクの更新を無効にする（警告を表示しない）
+            On Error Resume Next
+            wb.UpdateLinks = 0  ' xlUpdateLinksNever
+            If Err.Number <> 0 Then
+                Err.Clear
+            End If
             On Error GoTo 0
             
             ' シート「テーブル」「フィールド」「フォーム」「ビュー」「表紙」を取得
@@ -387,12 +393,25 @@ For Each file In folder.Files
                 
                 ' 「フィールド」の直後に「フォーム」を移動
                 If Not wsFormNew Is Nothing And Not wsField Is Nothing Then
+                    On Error Resume Next
                     wsFormNew.Move , wb.Sheets(fieldSheetIndex)
+                    If Err.Number <> 0 Then
+                        Err.Clear
+                    End If
+                    On Error GoTo 0
                 End If
                 
                 ' 「フォーム」の直後に「ビュー」を移動
                 If Not wsViewNew Is Nothing And Not wsFormNew Is Nothing Then
-                    wsViewNew.Move , wb.Sheets(wsFormNew.Index)
+                    On Error Resume Next
+                    formSheetIndex = wsFormNew.Index
+                    If formSheetIndex > 0 Then
+                        wsViewNew.Move , wb.Sheets(formSheetIndex)
+                    End If
+                    If Err.Number <> 0 Then
+                        Err.Clear
+                    End If
+                    On Error GoTo 0
                 End If
                 
                 Err.Clear
@@ -434,7 +453,11 @@ For Each file In folder.Files
             ' 保存ダイアログを防ぐため、SavedプロパティをTrueに設定
             wb.Saved = True
             ' リンクの更新を無効にする（保存時の警告を防ぐ）
+            On Error Resume Next
             wb.UpdateLinks = 0  ' xlUpdateLinksNever
+            If Err.Number <> 0 Then
+                Err.Clear
+            End If
             On Error GoTo 0
             
             ' ファイルを保存（リンクの更新を無効にする）
