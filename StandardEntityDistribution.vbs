@@ -193,7 +193,6 @@ For i = 0 To fileDict.Count - 1
             Err.Clear
             On Error GoTo 0
         End If
-    End If
 Next
 
 ' ▼ Excel終了（設定を戻してから Quit）
