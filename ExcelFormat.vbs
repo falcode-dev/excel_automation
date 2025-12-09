@@ -196,11 +196,30 @@ For Each file In folder.Files
                             ' D列（4列目）からAK列（37列目）までチェック（B列は除外）
                             For col = 4 To 37
                                 If maxCol >= col And arrRow + 1 <= maxRow Then
-                                    Dim cellValue
-                                    cellValue = Trim(CStr(dataArr(arrRow + 1, col)))
-                                    If Err.Number = 0 And cellValue <> "" And Not IsEmpty(dataArr(arrRow + 1, col)) Then
-                                        hasValue = True
-                                        Exit For
+                                    ' セルの値をチェック
+                                    Dim cellData
+                                    cellData = dataArr(arrRow + 1, col)
+                                    
+                                    ' IsEmptyを先にチェック
+                                    If Not IsEmpty(cellData) Then
+                                        ' 数値0やFalseなどの値も「値がある」と判定
+                                        If IsNumeric(cellData) Then
+                                            ' 数値の場合は値があると判定（0も値として扱う）
+                                            hasValue = True
+                                            Exit For
+                                        ElseIf VarType(cellData) = 11 Then
+                                            ' Boolean型の場合（True/False）
+                                            hasValue = True
+                                            Exit For
+                                        Else
+                                            ' 文字列の場合、空白文字以外は値があると判定
+                                            Dim cellValue
+                                            cellValue = Trim(CStr(cellData))
+                                            If cellValue <> "" Then
+                                                hasValue = True
+                                                Exit For
+                                            End If
+                                        End If
                                     End If
                                     Err.Clear
                                 End If
