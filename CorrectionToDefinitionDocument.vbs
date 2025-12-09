@@ -18,11 +18,13 @@ Dim fso, excel, wb, wsTable, wsField, ws, wsForm, wsView
 Dim folderPath, folder, file
 Dim fileName, filePath, fileExt
 Dim lastRow, lastCol, lastRowP
-Dim templatePath, templateWb
+Dim templatePath, templateWbOpen
 Dim fieldSheetIndex
 Dim cellValue, replacedValue
 Dim i, j
 Dim templateForm, templateView
+Dim dataArr, maxRow, maxCol, arrRow, arrCol
+Dim hasChanges
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -62,6 +64,20 @@ excel.EnableEvents = False
 ' Calculation変更は環境によってエラーになるのでエラー無視で実行
 On Error Resume Next
 excel.Calculation = -4135   ' xlCalculationManual
+On Error GoTo 0
+
+' ▼ template.xlsx を最初に1回だけ開いて保持（高速化）
+Dim templateWbOpen
+Set templateWbOpen = Nothing
+On Error Resume Next
+Set templateWbOpen = excel.Workbooks.Open(templatePath, 0, False)
+If Err.Number <> 0 Then
+    MsgBox "template.xlsx を開けませんでした: " & templatePath, vbCritical, "エラー"
+    Err.Clear
+    excel.Quit
+    Set excel = Nothing
+    WScript.Quit
+End If
 On Error GoTo 0
 
 ' ▼ フォルダ内のExcelファイルを順に処理
@@ -178,7 +194,7 @@ For Each file In folder.Files
                 End If
             End If
             
-            ' ▼ シート「テーブル」と「フィールド」のセルから「msdyn_」を「tel_wo」に置換
+            ' ▼ シート「テーブル」と「フィールド」のセルから「msdyn_」を「tel_wo」に置換（配列操作で高速化）
             ' シート「テーブル」の処理
             If Not wsTable Is Nothing Then
                 On Error Resume Next
@@ -192,22 +208,39 @@ For Each file In folder.Files
                 End If
                 On Error GoTo 0
                 
-                ' すべてのセルをチェックして置換
+                ' 配列に一括読み込み（高速化）
                 If lastRow > 0 And lastCol > 0 Then
-                    For i = 1 To lastRow
-                        For j = 1 To lastCol
-                            On Error Resume Next
-                            cellValue = CStr(wsTable.Cells(i, j).Value)
-                            If Err.Number = 0 And Not IsEmpty(wsTable.Cells(i, j).Value) Then
-                                If InStr(1, cellValue, "msdyn_", vbTextCompare) > 0 Then
-                                    replacedValue = Replace(cellValue, "msdyn_", "tel_wo", 1, -1, vbTextCompare)
-                                    wsTable.Cells(i, j).Value = replacedValue
+                    On Error Resume Next
+                    dataArr = wsTable.Range(wsTable.Cells(1, 1), wsTable.Cells(lastRow, lastCol)).Value
+                    If Err.Number = 0 And IsArray(dataArr) Then
+                        maxRow = UBound(dataArr, 1)
+                        maxCol = UBound(dataArr, 2)
+                        hasChanges = False
+                        
+                        ' 配列内で置換処理（1ベース配列）
+                        For i = 1 To maxRow
+                            For j = 1 To maxCol
+                                On Error Resume Next
+                                If Not IsEmpty(dataArr(i, j)) Then
+                                    cellValue = CStr(dataArr(i, j))
+                                    If Err.Number = 0 And InStr(1, cellValue, "msdyn_", vbTextCompare) > 0 Then
+                                        dataArr(i, j) = Replace(cellValue, "msdyn_", "tel_wo", 1, -1, vbTextCompare)
+                                        hasChanges = True
+                                    End If
                                 End If
-                            End If
-                            Err.Clear
-                            On Error GoTo 0
+                                Err.Clear
+                                On Error GoTo 0
+                            Next
                         Next
-                    Next
+                        
+                        ' 変更があった場合のみ一括書き戻し（高速化）
+                        If hasChanges Then
+                            wsTable.Range(wsTable.Cells(1, 1), wsTable.Cells(lastRow, lastCol)).Value = dataArr
+                        End If
+                    End If
+                    Err.Clear
+                    On Error GoTo 0
+                    dataArr = Array() ' メモリ解放
                 End If
             End If
             
@@ -224,22 +257,39 @@ For Each file In folder.Files
                 End If
                 On Error GoTo 0
                 
-                ' すべてのセルをチェックして置換
+                ' 配列に一括読み込み（高速化）
                 If lastRow > 0 And lastCol > 0 Then
-                    For i = 1 To lastRow
-                        For j = 1 To lastCol
-                            On Error Resume Next
-                            cellValue = CStr(wsField.Cells(i, j).Value)
-                            If Err.Number = 0 And Not IsEmpty(wsField.Cells(i, j).Value) Then
-                                If InStr(1, cellValue, "msdyn_", vbTextCompare) > 0 Then
-                                    replacedValue = Replace(cellValue, "msdyn_", "tel_wo", 1, -1, vbTextCompare)
-                                    wsField.Cells(i, j).Value = replacedValue
+                    On Error Resume Next
+                    dataArr = wsField.Range(wsField.Cells(1, 1), wsField.Cells(lastRow, lastCol)).Value
+                    If Err.Number = 0 And IsArray(dataArr) Then
+                        maxRow = UBound(dataArr, 1)
+                        maxCol = UBound(dataArr, 2)
+                        hasChanges = False
+                        
+                        ' 配列内で置換処理（1ベース配列）
+                        For i = 1 To maxRow
+                            For j = 1 To maxCol
+                                On Error Resume Next
+                                If Not IsEmpty(dataArr(i, j)) Then
+                                    cellValue = CStr(dataArr(i, j))
+                                    If Err.Number = 0 And InStr(1, cellValue, "msdyn_", vbTextCompare) > 0 Then
+                                        dataArr(i, j) = Replace(cellValue, "msdyn_", "tel_wo", 1, -1, vbTextCompare)
+                                        hasChanges = True
+                                    End If
                                 End If
-                            End If
-                            Err.Clear
-                            On Error GoTo 0
+                                Err.Clear
+                                On Error GoTo 0
+                            Next
                         Next
-                    Next
+                        
+                        ' 変更があった場合のみ一括書き戻し（高速化）
+                        If hasChanges Then
+                            wsField.Range(wsField.Cells(1, 1), wsField.Cells(lastRow, lastCol)).Value = dataArr
+                        End If
+                    End If
+                    Err.Clear
+                    On Error GoTo 0
+                    dataArr = Array() ' メモリ解放
                 End If
             End If
             
@@ -270,8 +320,8 @@ For Each file In folder.Files
             End If
             On Error GoTo 0
             
-            ' ▼ template.xlsx のシート「フォーム」「ビュー」をシート「フィールド」の後ろにコピー
-            If Not wsField Is Nothing Then
+            ' ▼ template.xlsx のシート「フォーム」「ビュー」をシート「フィールド」の後ろにコピー（高速化：既に開いているtemplate.xlsxを使用）
+            If Not wsField Is Nothing And Not templateWbOpen Is Nothing Then
                 ' 「フィールド」シートのインデックスを取得
                 On Error Resume Next
                 fieldSheetIndex = wsField.Index
@@ -281,50 +331,35 @@ For Each file In folder.Files
                 End If
                 On Error GoTo 0
                 
-                ' template.xlsx を開く
-                On Error Resume Next
-                Set templateWb = excel.Workbooks.Open(templatePath, 0, False)
-                If Err.Number = 0 Then
+                ' template.xlsx から「フォーム」「ビュー」シートを探してコピー（既に開いているブックを使用）
+                Set templateForm = Nothing
+                Set templateView = Nothing
+                
+                For Each ws In templateWbOpen.Sheets
+                    If ws.Name = "フォーム" Then
+                        Set templateForm = ws
+                    ElseIf ws.Name = "ビュー" Then
+                        Set templateView = ws
+                    End If
+                Next
+                
+                ' 「フォーム」シートをコピー
+                If Not templateForm Is Nothing Then
+                    On Error Resume Next
+                    templateForm.Copy , wb.Sheets(fieldSheetIndex)
+                    If Err.Number <> 0 Then
+                        Err.Clear
+                    End If
                     On Error GoTo 0
-                    
-                    ' template.xlsx から「フォーム」「ビュー」シートを探してコピー
-                    Set templateForm = Nothing
-                    Set templateView = Nothing
-                    
-                    For Each ws In templateWb.Sheets
-                        If ws.Name = "フォーム" Then
-                            Set templateForm = ws
-                        ElseIf ws.Name = "ビュー" Then
-                            Set templateView = ws
-                        End If
-                    Next
-                    
-                    ' 「フォーム」シートをコピー
-                    If Not templateForm Is Nothing Then
-                        On Error Resume Next
-                        templateForm.Copy , wb.Sheets(fieldSheetIndex)
-                        If Err.Number <> 0 Then
-                            Err.Clear
-                        End If
-                        On Error GoTo 0
+                End If
+                
+                ' 「ビュー」シートをコピー
+                If Not templateView Is Nothing Then
+                    On Error Resume Next
+                    templateView.Copy , wb.Sheets(fieldSheetIndex)
+                    If Err.Number <> 0 Then
+                        Err.Clear
                     End If
-                    
-                    ' 「ビュー」シートをコピー
-                    If Not templateView Is Nothing Then
-                        On Error Resume Next
-                        templateView.Copy , wb.Sheets(fieldSheetIndex)
-                        If Err.Number <> 0 Then
-                            Err.Clear
-                        End If
-                        On Error GoTo 0
-                    End If
-                    
-                    ' template.xlsx を閉じる（保存しない）
-                    templateWb.Close False
-                    Set templateWb = Nothing
-                Else
-                    MsgBox "template.xlsx を開けませんでした: " & fileName, vbWarning, "警告"
-                    Err.Clear
                     On Error GoTo 0
                 End If
             End If
@@ -339,13 +374,20 @@ For Each file In folder.Files
             End If
             
             ' ▼ 「保存しますか？」ダイアログを防ぐため、保存前に計算を実行
+            ' 計算モードを自動に戻してから計算を実行
+            ' 注意：循環参照がある場合は計算が終わらない可能性がある
+            ' 高速化のため、計算モード変更と計算を最後に一度だけ実行
             On Error Resume Next
             excel.Calculation = -4105   ' xlCalculationAutomatic
+            ' 計算を実行（循環参照がある場合は時間がかかる可能性がある）
+            ' Calculateは同期的に実行されるため、計算が完了するまで待機する
             wb.Calculate   ' ブック全体を計算
             If Err.Number <> 0 Then
+                ' 計算エラーが発生した場合（循環参照など）は計算モードを手動に戻す
                 excel.Calculation = -4135   ' xlCalculationManual
                 Err.Clear
             End If
+            ' 保存ダイアログを防ぐため、SavedプロパティをTrueに設定
             wb.Saved = True
             On Error GoTo 0
             
@@ -373,6 +415,14 @@ For Each file In folder.Files
         End If
     End If
 Next
+
+' ▼ template.xlsx を閉じる
+On Error Resume Next
+If Not templateWbOpen Is Nothing Then
+    templateWbOpen.Close False
+    Set templateWbOpen = Nothing
+End If
+On Error GoTo 0
 
 ' ▼ Excel終了（設定を戻してから Quit）
 On Error Resume Next
