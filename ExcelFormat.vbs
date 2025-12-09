@@ -16,6 +16,7 @@ Dim fso, excel, wb, wsTable, wsField, ws, wsCover
 Dim folderPath, folder, file
 Dim fileName, filePath, fileExt
 Dim lastRow, row, gValue, cValue, dValue, lowerGValue
+Dim hasCustom, hasStandard
 Dim dataArr, sortedArr, customRows, standardRows, emptyRows
 Dim i, j, arrRow, colCount, startRow, startCol
 Dim rowData
@@ -198,11 +199,14 @@ For Each file In folder.Files
                                 ' G列の値に「カスタム」が含まれている場合はカスタムとして扱う
                                 ' 「標準」が含まれている場合は標準として扱う
                                 ' 両方含まれている場合はカスタムを優先
-                                lowerGValue = LCase(gValue)
-                                If InStr(lowerGValue, "カスタム") > 0 Then
+                                ' InStrは大文字小文字を区別しないが、日本語には影響しないため、そのまま使用
+                                hasCustom = (InStr(1, gValue, "カスタム", vbTextCompare) > 0)
+                                hasStandard = (InStr(1, gValue, "標準", vbTextCompare) > 0)
+                                
+                                If hasCustom Then
                                     ' 「カスタム」が含まれている場合はカスタムとして扱う
                                     customRows.Add customRows.Count, arrRow
-                                ElseIf InStr(lowerGValue, "標準") > 0 Then
+                                ElseIf hasStandard Then
                                     ' 「標準」が含まれている場合は標準として扱う
                                     standardRows.Add standardRows.Count, arrRow
                                 Else
