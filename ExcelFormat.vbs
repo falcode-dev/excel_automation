@@ -80,8 +80,12 @@ For Each file In folder.Files
         If Err.Number = 0 Then
             On Error GoTo 0
             
-            ' シート「テーブル」と「フィールド」を取得
+            ' エラー発生時のクリーンアップ用にフラグを設定
+            Dim fileProcessed
+            fileProcessed = False
+            
             On Error Resume Next
+            ' シート「テーブル」と「フィールド」を取得
             Set wsTable = Nothing
             Set wsField = Nothing
             
@@ -100,14 +104,20 @@ For Each file In folder.Files
             On Error GoTo 0
             
             ' ▼ シート「テーブル」の処理
+            On Error Resume Next
             If Not wsTable Is Nothing Then
                 ' E5からE41を黒文字にする
                 With wsTable.Range("E5:E41")
                     .Font.Color = RGB(0, 0, 0)  ' 黒文字
                 End With
             End If
+            If Err.Number <> 0 Then
+                Err.Clear
+            End If
+            On Error GoTo 0
             
             ' ▼ シート「フィールド」の処理
+            On Error Resume Next
             If Not wsField Is Nothing Then
                 ' D7からAK417を黒文字にする
                 With wsField.Range("D7:AK417")
@@ -125,6 +135,11 @@ For Each file In folder.Files
                 On Error GoTo 0
                 
                 If lastRow >= 7 Then
+                    ' 無限ループ防止：最大行数を制限（10000行まで）
+                    If lastRow > 10000 Then
+                        lastRow = 10000
+                    End If
+                    
                     startRow = 7
                     startCol = 1  ' A列から
                     colCount = 37 ' AK列まで（37列目）
@@ -157,7 +172,19 @@ For Each file In folder.Files
                         On Error GoTo 0
                         
                         arrRow = 0
+                        ' 無限ループ防止：最大処理行数を制限
+                        Dim maxProcessRows
+                        maxProcessRows = lastRow - startRow + 1
+                        If maxProcessRows > 10000 Then
+                            maxProcessRows = 10000
+                        End If
+                        
                         For row = startRow To lastRow
+                            ' 無限ループ防止：処理行数が上限を超えた場合は終了
+                            If arrRow >= maxProcessRows Then
+                                Exit For
+                            End If
+                            
                             On Error Resume Next
                             gValue = ""
                             If maxCol >= 7 And arrRow + 1 <= maxRow Then  ' G列は7列目
@@ -263,6 +290,23 @@ For Each file In folder.Files
                     sortedArr = Array()
                 End If
             End If
+            If Err.Number <> 0 Then
+                ' エラーが発生した場合でもオブジェクトを解放
+                On Error Resume Next
+                If Not customRows Is Nothing Then
+                    Set customRows = Nothing
+                End If
+                If Not standardRows Is Nothing Then
+                    Set standardRows = Nothing
+                End If
+                If Not emptyRows Is Nothing Then
+                    Set emptyRows = Nothing
+                End If
+                dataArr = Array()
+                sortedArr = Array()
+                Err.Clear
+            End If
+            On Error GoTo 0
             
             ' シートが見つからない場合の警告
             If wsTable Is Nothing And wsField Is Nothing Then
@@ -274,6 +318,7 @@ For Each file In folder.Files
             End If
             
             ' 最後に「テーブル」シートをアクティブにしてA1にカーソルを戻す（1枚目にする）
+            On Error Resume Next
             If Not wsTable Is Nothing Then
                 wsTable.Activate
                 wsTable.Range("A1").Select
@@ -281,6 +326,10 @@ For Each file In folder.Files
                 wsField.Activate
                 wsField.Range("A1").Select
             End If
+            If Err.Number <> 0 Then
+                Err.Clear
+            End If
+            On Error GoTo 0
             
             ' ファイルを保存
             On Error Resume Next
@@ -291,29 +340,61 @@ For Each file In folder.Files
             End If
             On Error GoTo 0
             
-            ' ファイルを閉じる
-            wb.Close False
-            Set wb = Nothing
-            Set wsTable = Nothing
-            Set wsField = Nothing
-            Set ws = Nothing
+            fileProcessed = True
         Else
             MsgBox "ファイルを開けませんでした: " & fileName & vbCrLf & "エラー: " & Err.Description, vbCritical, "エラー"
             Err.Clear
             On Error GoTo 0
         End If
+        
+        ' ▼ エラー発生時でも確実にファイルを閉じる（クリーンアップ）
+        On Error Resume Next
+        If Not wb Is Nothing Then
+            If Not fileProcessed Then
+                ' 保存せずに閉じる
+                wb.Close False
+            Else
+                ' 既に保存済みの場合は閉じるだけ
+                wb.Close False
+            End If
+            Set wb = Nothing
+        End If
+        If Not wsTable Is Nothing Then
+            Set wsTable = Nothing
+        End If
+        If Not wsField Is Nothing Then
+            Set wsField = Nothing
+        End If
+        If Not ws Is Nothing Then
+            Set ws = Nothing
+        End If
+        If Not customRows Is Nothing Then
+            Set customRows = Nothing
+        End If
+        If Not standardRows Is Nothing Then
+            Set standardRows = Nothing
+        End If
+        If Not emptyRows Is Nothing Then
+            Set emptyRows = Nothing
+        End If
+        Err.Clear
+        On Error GoTo 0
     End If
 Next
 
 ' ▼ Excel終了（設定を戻してから Quit）
+' エラーが発生しても確実にExcelを終了させる
 On Error Resume Next
-excel.Calculation = -4105   ' xlCalculationAutomatic（失敗しても無視）
-excel.ScreenUpdating = True
-excel.EnableEvents = True
+If Not excel Is Nothing Then
+    excel.Calculation = -4105   ' xlCalculationAutomatic（失敗しても無視）
+    excel.ScreenUpdating = True
+    excel.EnableEvents = True
+    excel.DisplayAlerts = True
+    excel.Quit
+    Set excel = Nothing
+End If
+Err.Clear
 On Error GoTo 0
-
-excel.Quit
-Set excel = Nothing
 
 MsgBox "処理が完了しました。", vbInformation, "完了"
 
