@@ -67,7 +67,6 @@ excel.Calculation = -4135   ' xlCalculationManual
 On Error GoTo 0
 
 ' ▼ template.xlsx を最初に1回だけ開いて保持（高速化）
-Dim templateWbOpen
 Set templateWbOpen = Nothing
 On Error Resume Next
 Set templateWbOpen = excel.Workbooks.Open(templatePath, 0, False)
