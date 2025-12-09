@@ -306,6 +306,28 @@ For Each file In folder.Files
                             On Error GoTo 0
                         End If
                     End If
+                    
+                    ' ▼ B7以降に =ROW()-6 をセット
+                    ' 削除後の最終行を再取得（D列で判定）
+                    On Error Resume Next
+                    lastRow = wsField.Cells(wsField.Rows.Count, 4).End(-4162).Row ' xlUp (D列=4列目)
+                    If Err.Number <> 0 Or lastRow < 7 Then
+                        lastRow = 7
+                        Err.Clear
+                    End If
+                    On Error GoTo 0
+                    
+                    ' B7から最終行まで =ROW()-6 をセット
+                    If lastRow >= 7 Then
+                        For checkRow = 7 To lastRow
+                            On Error Resume Next
+                            wsField.Cells(checkRow, 2).Formula = "=ROW()-6"
+                            If Err.Number <> 0 Then
+                                Err.Clear
+                            End If
+                            On Error GoTo 0
+                        Next
+                    End If
                 End If
             End If
             
