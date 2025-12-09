@@ -112,9 +112,9 @@ For Each file In folder.Files
             ' ▼ シート「フィールド」の処理（ソートを最初に実行）
             If Not wsField Is Nothing Then
                 ' ▼ G7以降の行を処理（並び替えを最初に実行）
-                ' 最終行を取得（AK列で判定）
+                ' 最終行を取得（G列で判定 - G列に値がある最後の行を取得）
                 On Error Resume Next
-                lastRow = wsField.Cells(wsField.Rows.Count, 37).End(-4162).Row ' xlUp (AK列=37列目)
+                lastRow = wsField.Cells(wsField.Rows.Count, 7).End(-4162).Row ' xlUp (G列=7列目)
                 If Err.Number <> 0 Or lastRow < 7 Then
                     lastRow = 7
                     Err.Clear
@@ -153,8 +153,8 @@ For Each file In folder.Files
                         End If
                         On Error GoTo 0
                         
-                        arrRow = 0
                         For row = startRow To lastRow
+                            arrRow = row - startRow  ' 配列のインデックス（0ベース）
                             On Error Resume Next
                             gValue = ""
                             If maxCol >= 7 And arrRow + 1 <= maxRow Then  ' G列は7列目
@@ -190,7 +190,6 @@ For Each file In folder.Files
                                     standardRows.Add standardRows.Count, arrRow
                                 End If
                             End If
-                            arrRow = arrRow + 1
                         Next
                     End If
                     
