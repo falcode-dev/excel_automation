@@ -286,10 +286,8 @@ For Each file In folder.Files
                     If lastRow >= 7 Then
                         ' D列の7行目以降を配列で一括読み込み
                         On Error Resume Next
-                        Dim dColArr
                         dColArr = wsField.Range(wsField.Cells(7, 4), wsField.Cells(lastRow, 4)).Value
                         If Err.Number = 0 And IsArray(dColArr) Then
-                            Dim dMaxRow
                             dMaxRow = UBound(dColArr, 1)
                             For checkRow = 1 To dMaxRow
                                 On Error Resume Next
