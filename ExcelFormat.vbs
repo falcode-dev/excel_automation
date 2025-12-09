@@ -182,20 +182,11 @@ For Each file In folder.Files
                             maxProcessRows = 10000
                         End If
                         
-                        ' proto_がセットされた行の次の行以降を削除するためのフラグ
-                        Dim protoFound, protoRowIndex
-                        protoFound = False
-                        protoRowIndex = -1
+                        ' ▼ まず、D列以降に値がある行数をカウント
+                        Dim validRowCount, hasValue, col
+                        validRowCount = 0
                         
                         For row = startRow To lastRow
-                            ' proto_がセットされた行の次の行以降は処理しない（削除対象）
-                            If protoFound Then
-                                ' 次の行以降を削除対象として追加
-                                emptyRows.Add arrRow, row
-                                arrRow = arrRow + 1
-                                ' ループを続行して、残りの行も削除対象に追加
-                                GoTo NextRow
-                            End If
                             ' 無限ループ防止：処理行数が上限を超えた場合は終了
                             If arrRow >= maxProcessRows Then
                                 Exit For
@@ -203,7 +194,6 @@ For Each file In folder.Files
                             
                             ' ▼ D列以降（D列=4列目からAK列=37列目まで）に値があるかチェック
                             ' ※B列（2列目）の値の有無は無視（チェック対象外）
-                            Dim hasValue, col
                             hasValue = False
                             On Error Resume Next
                             ' D列（4列目）からAK列（37列目）までチェック（B列は除外）
@@ -239,6 +229,70 @@ For Each file In folder.Files
                             Next
                             On Error GoTo 0
                             
+                            ' D列以降に値がある行をカウント
+                            If hasValue Then
+                                validRowCount = validRowCount + 1
+                            End If
+                            
+                            arrRow = arrRow + 1
+                        Next
+                        
+                        ' ▼ D列以降に値がある行数+1行目以降を削除対象にする
+                        Dim deleteStartRow
+                        deleteStartRow = startRow + validRowCount  ' 有効な行数+1行目から削除
+                        
+                        ' ▼ 再度ループして、削除対象以外の行を処理
+                        arrRow = 0
+                        For row = startRow To lastRow
+                            ' 無限ループ防止：処理行数が上限を超えた場合は終了
+                            If arrRow >= maxProcessRows Then
+                                Exit For
+                            End If
+                            
+                            ' 削除対象の行（有効行数+1行目以降）は削除対象として追加
+                            If row >= deleteStartRow Then
+                                emptyRows.Add arrRow, row
+                                arrRow = arrRow + 1
+                                GoTo NextRow
+                            End If
+                            
+                            ' ▼ D列以降（D列=4列目からAK列=37列目まで）に値があるかチェック
+                            ' ※B列（2列目）の値の有無は無視（チェック対象外）
+                            hasValue = False
+                            On Error Resume Next
+                            ' D列（4列目）からAK列（37列目）までチェック（B列は除外）
+                            For col = 4 To 37
+                                If maxCol >= col And arrRow + 1 <= maxRow Then
+                                    ' セルの値をチェック
+                                    Dim cellData2
+                                    cellData2 = dataArr(arrRow + 1, col)
+                                    
+                                    ' 値があるかどうかを判定
+                                    If Not IsEmpty(cellData2) Then
+                                        ' 数値0やFalseなどの値も「値がある」と判定
+                                        If IsNumeric(cellData2) Then
+                                            ' 数値の場合は値があると判定（0も値として扱う）
+                                            hasValue = True
+                                            Exit For
+                                        ElseIf VarType(cellData2) = 11 Then
+                                            ' Boolean型の場合（True/False）
+                                            hasValue = True
+                                            Exit For
+                                        Else
+                                            ' 文字列の場合、空白文字以外は値があると判定
+                                            Dim cellValue2
+                                            cellValue2 = Trim(CStr(cellData2))
+                                            If cellValue2 <> "" Then
+                                                hasValue = True
+                                                Exit For
+                                            End If
+                                        End If
+                                    End If
+                                End If
+                                Err.Clear
+                            Next
+                            On Error GoTo 0
+                            
                             ' D列以降に値がない行は削除対象
                             If Not hasValue Then
                                 emptyRows.Add arrRow, row
@@ -262,9 +316,6 @@ For Each file In folder.Files
                                         cValue = Trim(CStr(dataArr(arrRow + 1, 3)))
                                         If Err.Number <> 0 Or cValue = "" Or IsEmpty(dataArr(arrRow + 1, 3)) Then
                                             dataArr(arrRow + 1, 3) = "proto_"
-                                            ' proto_をセットした行の次の行以降は削除対象
-                                            protoFound = True
-                                            protoRowIndex = arrRow
                                         End If
                                         Err.Clear
                                     End If
