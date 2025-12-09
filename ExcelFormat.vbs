@@ -20,6 +20,7 @@ Dim dataArr, sortedArr, customRows, standardRows, emptyRows
 Dim i, j, arrRow, colCount, startRow, startCol
 Dim rowData
 Dim emptyStartRow, deleteEndRow, checkRow
+Dim dRowCount, deleteStartRow
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -263,8 +264,8 @@ For Each file In folder.Files
                     dataArr = Array()
                     sortedArr = Array()
                     
-                    ' ▼ D列の値チェック：値がなくなった行から500行削除
-                    ' 並び替え後の最終行を再取得
+                    ' ▼ D7以降の値のある行数を取得し、その次の行から削除
+                    ' 並び替え後の最終行を再取得（D列で判定）
                     On Error Resume Next
                     lastRow = wsField.Cells(wsField.Rows.Count, 4).End(-4162).Row ' xlUp (D列=4列目)
                     If Err.Number <> 0 Or lastRow < 7 Then
@@ -273,35 +274,37 @@ For Each file In folder.Files
                     End If
                     On Error GoTo 0
                     
-                    ' D列の7行目以降をチェックして、値がなくなった最初の行を見つける
-                    emptyStartRow = 0
+                    ' D7以降で値がある行数をカウント
+                    dRowCount = 0
                     For checkRow = 7 To lastRow
                         On Error Resume Next
                         dValue = Trim(CStr(wsField.Cells(checkRow, 4).Value))
-                        If Err.Number <> 0 Or IsEmpty(wsField.Cells(checkRow, 4).Value) Or dValue = "" Then
-                            ' 値がない行を見つけた
-                            emptyStartRow = checkRow
-                            Err.Clear
-                            Exit For
+                        If Err.Number = 0 And Not IsEmpty(wsField.Cells(checkRow, 4).Value) And dValue <> "" Then
+                            ' 値がある行をカウント
+                            dRowCount = dRowCount + 1
                         End If
+                        Err.Clear
                         On Error GoTo 0
                     Next
                     
-                    ' 値がなくなった行が見つかった場合、その行から500行削除
-                    If emptyStartRow > 0 Then
-                        ' 削除する最終行を計算（シートの最終行を超えないようにする）
-                        deleteEndRow = emptyStartRow + 399
-                        If deleteEndRow > wsField.Rows.Count Then
-                            deleteEndRow = wsField.Rows.Count
-                        End If
+                    ' D7を含めた行（7行目）+ 値のある行数 + 1行目から削除
+                    ' 例：D7からD10まで値があれば、7 + 4 + 1 = 12行目から削除
+                    If dRowCount > 0 Then
+                        deleteStartRow = 7 + dRowCount + 1
                         
-                        ' 行を削除
-                        On Error Resume Next
-                        wsField.Rows(emptyStartRow & ":" & deleteEndRow).Delete
-                        If Err.Number <> 0 Then
-                            Err.Clear
+                        ' 削除する最終行を計算（シートの最終行まで）
+                        deleteEndRow = wsField.Rows.Count
+                        
+                        ' 削除開始行がシートの最終行を超えない場合のみ削除
+                        If deleteStartRow <= deleteEndRow Then
+                            ' 行を削除
+                            On Error Resume Next
+                            wsField.Rows(deleteStartRow & ":" & deleteEndRow).Delete
+                            If Err.Number <> 0 Then
+                                Err.Clear
+                            End If
+                            On Error GoTo 0
                         End If
-                        On Error GoTo 0
                     End If
                 End If
             End If
