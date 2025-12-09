@@ -109,22 +109,9 @@ For Each file In folder.Files
             End If
             On Error GoTo 0
             
-            ' ▼ シート「テーブル」の処理
-            If Not wsTable Is Nothing Then
-                ' E5からE41を黒文字にする
-                With wsTable.Range("E5:E41")
-                    .Font.Color = RGB(0, 0, 0)  ' 黒文字
-                End With
-            End If
-            
-            ' ▼ シート「フィールド」の処理
+            ' ▼ シート「フィールド」の処理（ソートを最初に実行）
             If Not wsField Is Nothing Then
-                ' D7からAK417を黒文字にする
-                With wsField.Range("D7:AK417")
-                    .Font.Color = RGB(0, 0, 0)  ' 黒文字
-                End With
-                
-                ' ▼ G7以降の行を処理（並び替え、削除、C列への値設定）
+                ' ▼ G7以降の行を処理（並び替えを最初に実行）
                 ' 最終行を取得（AK列で判定）
                 On Error Resume Next
                 lastRow = wsField.Cells(wsField.Rows.Count, 37).End(-4162).Row ' xlUp (AK列=37列目)
@@ -318,7 +305,7 @@ For Each file In folder.Files
                     ' D7を含めた行（7行目）+ 値のある行数 + 1行目から削除
                     ' 例：D7からD10まで値があれば、7 + 4 + 1 = 12行目から削除
                     If dRowCount > 0 Then
-                        deleteStartRow = 7 + dRowCount
+                        deleteStartRow = 7 + dRowCount + 1
                         
                         ' 削除する最終行を計算（シートの最終行まで）
                         deleteEndRow = wsField.Rows.Count
@@ -375,7 +362,27 @@ For Each file In folder.Files
                         Err.Clear
                     End If
                     On Error GoTo 0
+                    
+                    ' ▼ 色を黒にする処理（ソート処理の後）
+                    ' D7からAK417を黒文字にする
+                    On Error Resume Next
+                    wsField.Range("D7:AK417").Font.Color = RGB(0, 0, 0)  ' 黒文字
+                    If Err.Number <> 0 Then
+                        Err.Clear
+                    End If
+                    On Error GoTo 0
                 End If
+            End If
+            
+            ' ▼ シート「テーブル」の処理（整形処理）
+            If Not wsTable Is Nothing Then
+                ' E5からE41を黒文字にする
+                On Error Resume Next
+                wsTable.Range("E5:E41").Font.Color = RGB(0, 0, 0)  ' 黒文字
+                If Err.Number <> 0 Then
+                    Err.Clear
+                End If
+                On Error GoTo 0
             End If
             
             ' シートが見つからない場合の警告
