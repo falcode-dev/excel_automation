@@ -183,13 +183,18 @@ For Each file In folder.Files
                         End If
                         
                         ' proto_がセットされた行の次の行以降を削除するためのフラグ
-                        Dim protoFound
+                        Dim protoFound, protoRowIndex
                         protoFound = False
+                        protoRowIndex = -1
                         
                         For row = startRow To lastRow
                             ' proto_がセットされた行の次の行以降は処理しない（削除対象）
                             If protoFound Then
-                                Exit For
+                                ' 次の行以降を削除対象として追加
+                                emptyRows.Add arrRow, row
+                                arrRow = arrRow + 1
+                                ' ループを続行して、残りの行も削除対象に追加
+                                GoTo NextRow
                             End If
                             ' 無限ループ防止：処理行数が上限を超えた場合は終了
                             If arrRow >= maxProcessRows Then
@@ -259,6 +264,7 @@ For Each file In folder.Files
                                             dataArr(arrRow + 1, 3) = "proto_"
                                             ' proto_をセットした行の次の行以降は削除対象
                                             protoFound = True
+                                            protoRowIndex = arrRow
                                         End If
                                         Err.Clear
                                     End If
@@ -273,16 +279,12 @@ For Each file In folder.Files
                                         ' その他の値も標準として扱う
                                         standardRows.Add standardRows.Count, arrRow
                                     End If
-                                    
-                                    ' proto_がセットされた行の次の行以降は処理しない（削除対象）
-                                    If protoFound Then
-                                        Exit For
-                                    End If
                                 Else
                                     ' G列が空でもD列以降に値がある場合は標準として扱う
                                     standardRows.Add standardRows.Count, arrRow
                                 End If
                             End If
+NextRow:
                             arrRow = arrRow + 1
                         Next
                     End If
