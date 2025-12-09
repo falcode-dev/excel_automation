@@ -171,17 +171,6 @@ For Each file In folder.Files
                                 ' G列が空の行は削除対象
                                 emptyRows.Add arrRow, row
                             Else
-                                ' G列に値がある場合、C列に "proto_" をセット（既存の値がない場合のみ）
-                                On Error Resume Next
-                                If maxCol >= 3 And arrRow + 1 <= maxRow Then  ' C列は3列目
-                                    cValue = Trim(CStr(dataArr(arrRow + 1, 3)))
-                                    If Err.Number <> 0 Or cValue = "" Or IsEmpty(dataArr(arrRow + 1, 3)) Then
-                                        dataArr(arrRow + 1, 3) = "proto_"
-                                    End If
-                                    Err.Clear
-                                End If
-                                On Error GoTo 0
-                                
                                 ' 「カスタム」と「標準」で分類（部分一致にも対応）
                                 ' G列の値に「カスタム」が含まれている場合はカスタムとして扱う
                                 ' 「標準」が含まれている場合は標準として扱う
@@ -268,8 +257,35 @@ For Each file In folder.Files
                     dataArr = Array()
                     sortedArr = Array()
                     
-                    ' ▼ D7以降の値のある行数を取得し、その次の行から削除
+                    ' ▼ proto_セット処理（ソート処理の後）
                     ' 並び替え後の最終行を再取得（D列で判定）
+                    On Error Resume Next
+                    lastRow = wsField.Cells(wsField.Rows.Count, 4).End(-4162).Row ' xlUp (D列=4列目)
+                    If Err.Number <> 0 Or lastRow < 7 Then
+                        lastRow = 7
+                        Err.Clear
+                    End If
+                    On Error GoTo 0
+                    
+                    ' G列に値がある行のC列に "proto_" をセット（既存の値がない場合のみ）
+                    If lastRow >= 7 Then
+                        For checkRow = 7 To lastRow
+                            On Error Resume Next
+                            gValue = Trim(CStr(wsField.Cells(checkRow, 7).Value))
+                            If Err.Number = 0 And Not IsEmpty(wsField.Cells(checkRow, 7).Value) And gValue <> "" Then
+                                ' G列に値がある場合、C列に "proto_" をセット（既存の値がない場合のみ）
+                                cValue = Trim(CStr(wsField.Cells(checkRow, 3).Value))
+                                If Err.Number <> 0 Or cValue = "" Or IsEmpty(wsField.Cells(checkRow, 3).Value) Then
+                                    wsField.Cells(checkRow, 3).Value = "proto_"
+                                End If
+                            End If
+                            Err.Clear
+                            On Error GoTo 0
+                        Next
+                    End If
+                    
+                    ' ▼ D7以降の値のある行数を取得し、その次の行から削除
+                    ' 最終行を再取得（D列で判定）
                     On Error Resume Next
                     lastRow = wsField.Cells(wsField.Rows.Count, 4).End(-4162).Row ' xlUp (D列=4列目)
                     If Err.Number <> 0 Or lastRow < 7 Then
