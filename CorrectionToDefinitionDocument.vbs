@@ -27,6 +27,7 @@ Dim dataArr, maxRow, maxCol, arrRow, arrCol
 Dim hasChanges
 Dim wsFormNew, wsViewNew
 Dim formSheetIndex
+Dim linkSources, linkIndex, linkCount
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -450,6 +451,33 @@ For Each file In folder.Files
                 excel.Calculation = -4135   ' xlCalculationManual
                 Err.Clear
             End If
+            ' ▼ 外部リンクを削除して警告を防ぐ
+            On Error Resume Next
+            linkSources = wb.LinkSources(1)  ' xlExcelLinks
+            If Err.Number = 0 Then
+                ' リンクが存在する場合
+                If IsArray(linkSources) Then
+                    On Error Resume Next
+                    linkCount = UBound(linkSources) + 1
+                    If Err.Number = 0 And linkCount > 0 Then
+                        For linkIndex = 0 To linkCount - 1
+                            On Error Resume Next
+                            wb.BreakLink linkSources(linkIndex), 1  ' xlLinkTypeExcelLinks
+                            Err.Clear
+                            On Error GoTo 0
+                        Next
+                    End If
+                    Err.Clear
+                ElseIf Not IsEmpty(linkSources) And linkSources <> "" Then
+                    ' リンクが1つの場合（配列ではなく文字列）
+                    On Error Resume Next
+                    wb.BreakLink linkSources, 1  ' xlLinkTypeExcelLinks
+                    Err.Clear
+                End If
+            End If
+            Err.Clear
+            On Error GoTo 0
+            
             ' 保存ダイアログを防ぐため、SavedプロパティをTrueに設定
             wb.Saved = True
             ' リンクの更新を無効にする（保存時の警告を防ぐ）
@@ -460,7 +488,7 @@ For Each file In folder.Files
             End If
             On Error GoTo 0
             
-            ' ファイルを保存（リンクの更新を無効にする）
+            ' ファイルを保存
             On Error Resume Next
             wb.Save
             If Err.Number <> 0 Then
