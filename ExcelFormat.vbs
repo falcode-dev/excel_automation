@@ -185,40 +185,63 @@ For Each file In folder.Files
                                 Exit For
                             End If
                             
+                            ' ▼ D列以降（D列=4列目からAK列=37列目まで）に値があるかチェック
+                            Dim hasValue, col
+                            hasValue = False
                             On Error Resume Next
-                            gValue = ""
-                            If maxCol >= 7 And arrRow + 1 <= maxRow Then  ' G列は7列目
-                                gValue = Trim(CStr(dataArr(arrRow + 1, 7)))  ' G列（7列目）
-                                If Err.Number <> 0 Or IsEmpty(dataArr(arrRow + 1, 7)) Then
-                                    gValue = ""
-                                    Err.Clear
-                                End If
-                            End If
-                            On Error GoTo 0
-                            
-                            ' G列の値に基づいて分類
-                            If gValue = "" Or IsEmpty(gValue) Then
-                                ' G列が空の行は削除対象
-                                emptyRows.Add arrRow, row
-                            Else
-                                ' G列に値がある場合、C列に "proto_" をセット（既存の値がない場合のみ）
-                                On Error Resume Next
-                                If maxCol >= 3 And arrRow + 1 <= maxRow Then  ' C列は3列目
-                                    cValue = Trim(CStr(dataArr(arrRow + 1, 3)))
-                                    If Err.Number <> 0 Or cValue = "" Or IsEmpty(dataArr(arrRow + 1, 3)) Then
-                                        dataArr(arrRow + 1, 3) = "proto_"
+                            ' D列（4列目）からAK列（37列目）までチェック
+                            For col = 4 To 37
+                                If maxCol >= col And arrRow + 1 <= maxRow Then
+                                    Dim cellValue
+                                    cellValue = Trim(CStr(dataArr(arrRow + 1, col)))
+                                    If Err.Number = 0 And cellValue <> "" And Not IsEmpty(dataArr(arrRow + 1, col)) Then
+                                        hasValue = True
+                                        Exit For
                                     End If
                                     Err.Clear
                                 End If
+                            Next
+                            On Error GoTo 0
+                            
+                            ' D列以降に値がない行は削除対象
+                            If Not hasValue Then
+                                emptyRows.Add arrRow, row
+                            Else
+                                ' D列以降に値がある行は処理対象
+                                On Error Resume Next
+                                gValue = ""
+                                If maxCol >= 7 And arrRow + 1 <= maxRow Then  ' G列は7列目
+                                    gValue = Trim(CStr(dataArr(arrRow + 1, 7)))  ' G列（7列目）
+                                    If Err.Number <> 0 Or IsEmpty(dataArr(arrRow + 1, 7)) Then
+                                        gValue = ""
+                                        Err.Clear
+                                    End If
+                                End If
                                 On Error GoTo 0
                                 
-                                ' 「カスタム」と「標準」で分類
-                                If LCase(gValue) = "カスタム" Then
-                                    customRows.Add customRows.Count, arrRow
-                                ElseIf LCase(gValue) = "標準" Then
-                                    standardRows.Add standardRows.Count, arrRow
+                                ' G列に値がある場合、C列に "proto_" をセット（既存の値がない場合のみ）
+                                If gValue <> "" Then
+                                    On Error Resume Next
+                                    If maxCol >= 3 And arrRow + 1 <= maxRow Then  ' C列は3列目
+                                        cValue = Trim(CStr(dataArr(arrRow + 1, 3)))
+                                        If Err.Number <> 0 Or cValue = "" Or IsEmpty(dataArr(arrRow + 1, 3)) Then
+                                            dataArr(arrRow + 1, 3) = "proto_"
+                                        End If
+                                        Err.Clear
+                                    End If
+                                    On Error GoTo 0
+                                    
+                                    ' 「カスタム」と「標準」で分類
+                                    If LCase(gValue) = "カスタム" Then
+                                        customRows.Add customRows.Count, arrRow
+                                    ElseIf LCase(gValue) = "標準" Then
+                                        standardRows.Add standardRows.Count, arrRow
+                                    Else
+                                        ' その他の値も標準として扱う
+                                        standardRows.Add standardRows.Count, arrRow
+                                    End If
                                 Else
-                                    ' その他の値も標準として扱う
+                                    ' G列が空でもD列以降に値がある場合は標準として扱う
                                     standardRows.Add standardRows.Count, arrRow
                                 End If
                             End If
