@@ -239,7 +239,7 @@ For Each file In folder.Files
                                 If Not IsEmpty(dataArr(i, j)) Then
                                     cellValue = CStr(dataArr(i, j))
                                     If Err.Number = 0 And InStr(1, cellValue, "msdyn_", vbTextCompare) > 0 Then
-                                        dataArr(i, j) = Replace(cellValue, "msdyn_", "tel_wo", 1, -1, vbTextCompare)
+                                        dataArr(i, j) = Replace(cellValue, "msdyn_", "wo_", 1, -1, vbTextCompare)
                                         hasChanges = True
                                     End If
                                 End If
@@ -288,7 +288,7 @@ For Each file In folder.Files
                                 If Not IsEmpty(dataArr(i, j)) Then
                                     cellValue = CStr(dataArr(i, j))
                                     If Err.Number = 0 And InStr(1, cellValue, "msdyn_", vbTextCompare) > 0 Then
-                                        dataArr(i, j) = Replace(cellValue, "msdyn_", "tel_wo", 1, -1, vbTextCompare)
+                                        dataArr(i, j) = Replace(cellValue, "msdyn_", "wo_", 1, -1, vbTextCompare)
                                         hasChanges = True
                                     End If
                                 End If
