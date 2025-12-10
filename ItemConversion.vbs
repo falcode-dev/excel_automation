@@ -6,6 +6,7 @@ Option Explicit
 '  ・シート「テーブル」のE12の値を変換
 '    OrganizationOwned → 組織
 '    UserOwned → ユーザーまたはチーム
+'    BusinessOwned → 空
 '  ・シート「テーブル」のE11の値を変換
 '    Standard → 標準
 '    activity → 活動
@@ -13,15 +14,20 @@ Option Explicit
 '  ・シート「テーブル」のE20の値を変換
 '    None → 任意
 '    ApplicationRequired → 必須
+'    SystemRequired → システム要求
+'  ・シート「フィールド」のAK列の左に新規列を追加
+'    新規列の5行目に「ServiceCRMフィールド名」を設定
+'    D列の7行目以降の値を新規列にコピー
 '  ※エラーハンドリングと処理のベースは
 '    CorrectionToDefinitionDocument.vbsを参考にしています
 '────────────────────────────────────────
 
-Dim fso, excel, wb, wsTable, ws
+Dim fso, excel, wb, wsTable, wsField, ws
 Dim folderPath, folder, file
 Dim fileName, filePath, fileExt
 Dim cellValue, convertedValue
 Dim linkSources, linkIndex, linkCount
+Dim lastRow
 
 ' ▼ 引数チェック（ドラッグ&ドロップされたフォルダのパス）
 If WScript.Arguments.Count = 0 Then
@@ -68,6 +74,9 @@ For Each file In folder.Files
         If Not wsTable Is Nothing Then
             Set wsTable = Nothing
         End If
+        If Not wsField Is Nothing Then
+            Set wsField = Nothing
+        End If
         If Not ws Is Nothing Then
             Set ws = Nothing
         End If
@@ -106,7 +115,7 @@ For Each file In folder.Files
             
             ' ▼ シート「テーブル」の各セルの値を変換
             If Not wsTable Is Nothing Then
-                ' ▼ E12の値を変換（OrganizationOwned → 組織、UserOwned → ユーザーまたはチーム）
+                ' ▼ E12の値を変換（OrganizationOwned → 組織、UserOwned → ユーザーまたはチーム、BusinessOwned → 空）
                 On Error Resume Next
                 cellValue = wsTable.Cells(12, 5).Value  ' E12 = 5列目、12行目
                 If Err.Number = 0 And Not IsEmpty(cellValue) Then
@@ -118,6 +127,8 @@ For Each file In folder.Files
                         convertedValue = "組織"
                     ElseIf StrComp(cellValue, "UserOwned", vbTextCompare) = 0 Then
                         convertedValue = "ユーザーまたはチーム"
+                    ElseIf StrComp(cellValue, "BusinessOwned", vbTextCompare) = 0 Then
+                        wsTable.Cells(12, 5).Value = ""
                     End If
                     
                     ' 変換値が設定された場合のみ更新
@@ -152,7 +163,7 @@ For Each file In folder.Files
                 Err.Clear
                 On Error GoTo 0
                 
-                ' ▼ E20の値を変換（None → 任意、ApplicationRequired → 必須）
+                ' ▼ E20の値を変換（None → 任意、ApplicationRequired → 必須、SystemRequired → システム要求）
                 On Error Resume Next
                 cellValue = wsTable.Cells(20, 5).Value  ' E20 = 5列目、20行目
                 If Err.Number = 0 And Not IsEmpty(cellValue) Then
@@ -164,6 +175,8 @@ For Each file In folder.Files
                         convertedValue = "任意"
                     ElseIf StrComp(cellValue, "ApplicationRequired", vbTextCompare) = 0 Then
                         convertedValue = "必須"
+                    ElseIf StrComp(cellValue, "SystemRequired", vbTextCompare) = 0 Then
+                        convertedValue = "システム要求"
                     End If
                     
                     ' 変換値が設定された場合のみ更新
@@ -171,6 +184,50 @@ For Each file In folder.Files
                         wsTable.Cells(20, 5).Value = convertedValue
                     End If
                 End If
+                Err.Clear
+                On Error GoTo 0
+            End If
+            
+            ' ▼ シート「フィールド」の処理
+            On Error Resume Next
+            Set wsField = Nothing
+            
+            ' シート名で検索
+            For Each ws In wb.Sheets
+                If ws.Name = "フィールド" Then
+                    Set wsField = ws
+                    Exit For
+                End If
+            Next
+            
+            If Err.Number <> 0 Then
+                Err.Clear
+            End If
+            On Error GoTo 0
+            
+            ' ▼ シート「フィールド」のAK列の左に新規列を追加し、D列の値をコピー
+            If Not wsField Is Nothing Then
+                On Error Resume Next
+                ' AK列（37列目）の左に列を挿入
+                wsField.Columns(37).Insert
+                
+                If Err.Number = 0 Then
+                    ' 新規列の5行目に「ServiceCRMフィールド名」を設定
+                    wsField.Cells(5, 37).Value = "ServiceCRMフィールド名"
+                    
+                    ' D列の最後の行を取得（高速化のため、UsedRangeを使用）
+                    lastRow = wsField.Cells(wsField.Rows.Count, 4).End(-4162).Row  ' xlUp = -4162
+                    
+                    ' 7行目以降にデータがある場合のみコピー
+                    If lastRow >= 7 Then
+                        ' D列の7行目から最後の行までを新規列（37列目）にコピー（高速化：範囲を一度にコピー、値のみ）
+                        wsField.Range(wsField.Cells(7, 37), wsField.Cells(lastRow, 37)).Value = wsField.Range(wsField.Cells(7, 4), wsField.Cells(lastRow, 4)).Value
+                    End If
+                    
+                    ' 新規列の列幅を自動調整
+                    wsField.Columns(37).AutoFit
+                End If
+                
                 Err.Clear
                 On Error GoTo 0
             End If
@@ -240,6 +297,7 @@ For Each file In folder.Files
             wb.Close False
             Set wb = Nothing
             Set wsTable = Nothing
+            Set wsField = Nothing
             Set ws = Nothing
         Else
             MsgBox "ファイルを開けませんでした: " & fileName & vbCrLf & "エラー: " & Err.Description, vbCritical, "エラー"
